@@ -18,14 +18,11 @@ protected:
 
 public:	
 	virtual void Tick(float DeltaTime) override;
-
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void PostInitializeComponents() override;
 
 protected:
-	// Combat
-	void FireWeapon();
-	void AimingButtonPressed();
-	void AimingButtonReleased();
+	
 
 private:
 	// PostProcessing
@@ -35,10 +32,16 @@ private:
 	// Movement
 	void MoveForward(float Value);
 	void MoveRight(float Value);
+	
+	// Actions
 	void GripLeft() { LeftController->Grip(); }
 	void ReleaseLeft() { LeftController->Release(); }
 	void GripRight() { RightController->Grip(); }
 	void ReleaseRight() { RightController->Release(); }
+	void FireButtonPressed();
+	void FireButtonReleased();
+	void AimingButtonPressed();
+	void AimingButtonReleased();
 
 	// Teleport
 	void BeginTeleport();
@@ -78,6 +81,9 @@ private:
 	UPROPERTY()
 	TArray<class USplineMeshComponent*> TeleportPathMeshPool;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UCombatComponent* Combat;
+
 	// Initialization
 
 	// Teleport
@@ -115,31 +121,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = Initialization)
 	TSubclassOf<AHandController> HandControllerClass;
 
-	// Effects
-
-	// Weapon
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class USoundCue* FireSound;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UParticleSystem* MuzzleFlash;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* ImpactParticles;
-
-	// Smoke Trail for bullets
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* BeamParticles;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	bool bAiming;
-
-	float CameraDefaultFOV;
-	float CameraZoomedFOV;
-
 	// Object References
 	class APlayerController* PlayerController;
 
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
+	FORCEINLINE AHandController* GetRightHandController() const { return RightController; }
 };

@@ -55,7 +55,7 @@ private:
 
 public:
 	void SetHand(EControllerHand Hand) { MotionController->SetTrackingSource(Hand); }
-	USkeletalMeshComponent* AHandController::GetWeaponMesh() { return WeaponMesh; }
+	USkeletalMeshComponent* GetWeaponMesh() { return WeaponMesh; }
 	void PairController(AHandController* Controller);
 
 	void Grip();
