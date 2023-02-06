@@ -45,15 +45,21 @@ private:
 
 	void SetMovementMode(EMovementMode Mode);
 
-
 private:
+	// Components
+	UPROPERTY(EditAnywhere, Category = Initialization)
+	USkeletalMeshComponent* WeaponMesh;
+
 	UPROPERTY(EditDefaultsOnly)
 	class UHapticFeedbackEffect_Base* HapticEffect;
 
 public:
 	void SetHand(EControllerHand Hand) { MotionController->SetTrackingSource(Hand); }
+	USkeletalMeshComponent* AHandController::GetWeaponMesh() { return WeaponMesh; }
 	void PairController(AHandController* Controller);
 
 	void Grip();
 	void Release();
+
+
 };

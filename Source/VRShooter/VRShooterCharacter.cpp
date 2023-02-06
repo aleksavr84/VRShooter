@@ -10,9 +10,17 @@
 #include "NavigationSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Sound/SoundCue.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "DrawDebugHelpers.h"
+#include "Particles/ParticleSystemComponent.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
 {
+	bAiming = false;
+	CameraDefaultFOV = 0.f;
+	CameraZoomedFOV = 60.f;
+
  	PrimaryActorTick.bCanEverTick = true;
 
 	VRRoot = CreateDefaultSubobject<USceneComponent>(FName("VRRoot"));
@@ -64,6 +72,11 @@ void AVRShooterCharacter::BeginPlay()
 	if (LeftController && RightController)
 	{
 		LeftController->PairController(RightController);
+	}
+
+	if (Camera)
+	{
+		CameraDefaultFOV = GetCameraComponent()->FieldOfView;
 	}
 }
 
@@ -272,6 +285,9 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction(TEXT("GripLeft"), IE_Released, this, &AVRShooterCharacter::ReleaseLeft);
 	PlayerInputComponent->BindAction(TEXT("GripRight"), IE_Pressed, this, &AVRShooterCharacter::GripRight);
 	PlayerInputComponent->BindAction(TEXT("GripRight"), IE_Released, this, &AVRShooterCharacter::ReleaseRight);
+	PlayerInputComponent->BindAction(TEXT("FireButton"), IE_Pressed, this, &AVRShooterCharacter::FireWeapon);
+	PlayerInputComponent->BindAction(TEXT("AimingButton"), IE_Pressed, this, &AVRShooterCharacter::AimingButtonPressed);
+	PlayerInputComponent->BindAction(TEXT("AimingButton"), IE_Released, this, &AVRShooterCharacter::AimingButtonReleased);
 }
 
 void AVRShooterCharacter::MoveForward(float value)
@@ -321,6 +337,89 @@ void AVRShooterCharacter::FinishTeleport()
 	SetActorLocation(Destination);
 
 	StartFade(1, 0);
+}
+
+void AVRShooterCharacter::FireWeapon()
+{
+	if (FireSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FireSound);
+	}
+
+	const USkeletalMeshComponent* WeaponMesh = RightController->GetWeaponMesh();
+	
+	if (WeaponMesh)
+	{
+		const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName("Muzzle");
+	
+		if (BarrelSocket)
+		{
+			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
+
+			if (MuzzleFlash)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+			}
+
+			FHitResult FireHit;
+			const FVector Start{ SocketTransform.GetLocation() };
+			const FQuat Rotation{ SocketTransform.GetRotation() };
+			const FVector RotationAxis{ Rotation.GetAxisX() };
+			const FVector End{ Start + RotationAxis * 50'000.f };
+
+			FVector BeamEndPoint{ End };
+
+			GetWorld()->LineTraceSingleByChannel(
+				FireHit,
+				Start,
+				End,
+				ECollisionChannel::ECC_Visibility
+			);
+
+			if (FireHit.bBlockingHit)
+			{
+				/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
+				DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
+
+				BeamEndPoint = FireHit.Location;
+
+				if (ImpactParticles)
+				{
+					UGameplayStatics::SpawnEmitterAtLocation(
+						GetWorld(),
+						ImpactParticles,
+						FireHit.Location
+					);
+				}
+			}
+
+			if (BeamParticles)
+			{
+				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+					GetWorld(),
+					BeamParticles,
+					SocketTransform
+				);
+
+				if (Beam)
+				{
+					Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+				}
+			}
+		}
+	}
+}
+
+void AVRShooterCharacter::AimingButtonPressed()
+{
+	bAiming = true;
+	GetCameraComponent()->SetFieldOfView(CameraZoomedFOV);
+}
+
+void AVRShooterCharacter::AimingButtonReleased()
+{
+	bAiming = false;
+	GetCameraComponent()->SetFieldOfView(CameraDefaultFOV);
 }
 
 

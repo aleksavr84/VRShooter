@@ -3,6 +3,7 @@
 #include "Haptics/HapticFeedbackEffect_Base.h"
 #include "VRShooterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 
 AHandController::AHandController()
 {
@@ -10,7 +11,11 @@ AHandController::AHandController()
 
 	MotionController = CreateDefaultSubobject<UMotionControllerComponent>(FName("MotionController"));
 	SetRootComponent(MotionController);
-	MotionController->bDisplayDeviceModel = true;
+	MotionController->bDisplayDeviceModel = false;
+
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("WeaponMesh"));
+	WeaponMesh->SetupAttachment(MotionController);
+
 }
 
 void AHandController::BeginPlay()

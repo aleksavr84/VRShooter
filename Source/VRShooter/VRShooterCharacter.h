@@ -21,28 +21,36 @@ public:
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+protected:
+	// Combat
+	void FireWeapon();
+	void AimingButtonPressed();
+	void AimingButtonReleased();
+
 private:
-	bool FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation);
-	void UpdateDestinationMarker();
+	// PostProcessing
 	void UpdateBlinkers();
-	void DrawTeleportPath(const TArray<FVector>& Path);
-	void UpdateSpline(const TArray<FVector>& Path);
 	FVector2D GetBlinkerCenter();
 
+	// Movement
 	void MoveForward(float Value);
 	void MoveRight(float Value);
-
 	void GripLeft() { LeftController->Grip(); }
 	void ReleaseLeft() { LeftController->Release(); }
-
 	void GripRight() { RightController->Grip(); }
 	void ReleaseRight() { RightController->Release(); }
 
+	// Teleport
 	void BeginTeleport();
 	void StartFade(float FromAlpha, float ToAlpha);
 	void FinishTeleport();
+	bool FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation);
+	void UpdateDestinationMarker();
+	void DrawTeleportPath(const TArray<FVector>& Path);
+	void UpdateSpline(const TArray<FVector>& Path);
 
 private:
+	// Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "treu"))
 	class UCameraComponent* Camera;
 
@@ -70,6 +78,15 @@ private:
 	UPROPERTY()
 	TArray<class USplineMeshComponent*> TeleportPathMeshPool;
 
+	// Initialization
+
+	// Teleport
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	class UStaticMesh* TeleportArchMesh;
+
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	class UMaterialInterface* TeleportArchMaterial;
+
 	UPROPERTY(EditAnywhere, Category = Initialization)
 	float TeleportProjectileRadius = 10.f;
 
@@ -85,6 +102,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = Initialization)
 	FVector TeleportProjectionExtent = FVector(100, 100, 100);
 
+	// Blinker
 	UPROPERTY(EditAnywhere, Category = Initialization)
 	class UMaterialInterface* BlinkerMaterialBase;
 
@@ -95,14 +113,31 @@ private:
 	float ControllerRotation = 0.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = Initialization)
-	class UStaticMesh* TeleportArchMesh;
-
-	UPROPERTY(EditDefaultsOnly, Category = Initialization)
-	class UMaterialInterface* TeleportArchMaterial;
-
-	UPROPERTY(EditDefaultsOnly, Category = Initialization)
 	TSubclassOf<AHandController> HandControllerClass;
 
+	// Effects
+
+	// Weapon
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class USoundCue* FireSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UParticleSystem* MuzzleFlash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* ImpactParticles;
+
+	// Smoke Trail for bullets
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* BeamParticles;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bAiming;
+
+	float CameraDefaultFOV;
+	float CameraZoomedFOV;
+
+	// Object References
 	class APlayerController* PlayerController;
 
 public:
