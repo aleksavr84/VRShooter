@@ -22,7 +22,7 @@ public:
 	virtual void PostInitializeComponents() override;
 
 protected:
-	
+	void TraceForItems();
 
 private:
 	// PostProcessing
@@ -52,9 +52,16 @@ private:
 	void DrawTeleportPath(const TArray<FVector>& Path);
 	void UpdateSpline(const TArray<FVector>& Path);
 
+	// Tracing
+	bool bShouldTraceForItems = false;
+	int8 OverlappedItemCount;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	class AItem* TraceHitItemLastFrame;
+
 private:
 	// Components
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "treu"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* Camera;
 
 	UPROPERTY(VisibleAnywhere, Category = Initialization)
@@ -127,4 +134,7 @@ private:
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
 	FORCEINLINE AHandController* GetRightHandController() const { return RightController; }
+	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
+
+	void IncrementOverlappedItemCount(int8 Amount);
 };

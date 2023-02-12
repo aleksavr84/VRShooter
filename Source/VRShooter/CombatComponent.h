@@ -22,8 +22,14 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 	void StartFireTimer();
+	
+	UFUNCTION()
 	void AutoFireReset();
+
 	void FireWeapon();
+
+	// Line trace for Items under the crosshairs
+	bool TraceUnderCrosshairs(FHitResult& OutHitResult);
 
 private:
 	UPROPERTY()

@@ -134,3 +134,46 @@ void UCombatComponent::FireWeapon()
 	}
 }
 
+bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
+{
+	// Get Viewport Size
+	FVector2D ViewportSize;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+	}
+
+	// Get screen space location of crosshairs
+	FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
+	FVector CrosshairWorldPosition;
+	FVector CrosshairWorldDirection;
+
+	// Get world postition and direction of crosshairs
+	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
+		UGameplayStatics::GetPlayerController(this, 0),
+		CrosshairLocation,
+		CrosshairWorldPosition,
+		CrosshairWorldDirection
+	);
+
+	if (bScreenToWorld)
+	{
+		// Trace from Crosshair world location outward
+		const FVector Start{ CrosshairWorldPosition };
+		const FVector End{ Start + CrosshairWorldDirection * 50'000.f };
+		GetWorld()->LineTraceSingleByChannel(
+			OutHitResult,
+			Start,
+			End,
+			ECollisionChannel::ECC_Visibility
+		);
+
+		if (OutHitResult.bBlockingHit)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+

@@ -11,6 +11,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "CombatComponent.h"
+#include "Item.h"
+#include "Components/WidgetComponent.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
 {
@@ -92,8 +94,9 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 
 	UpdateDestinationMarker();
 	UpdateBlinkers();
-}
 
+	TraceForItems();
+}
 
 bool AVRShooterCharacter::FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation)
 {
@@ -272,6 +275,61 @@ void AVRShooterCharacter::UpdateSpline(const TArray<FVector>& Path)
 	}
 
 	TeleportPath->UpdateSpline();
+}
+
+void AVRShooterCharacter::IncrementOverlappedItemCount(int8 Amount)
+{
+	if (OverlappedItemCount + Amount <= 0)
+	{
+		OverlappedItemCount = 0;
+		bShouldTraceForItems = false;
+	}
+	else
+	{
+		OverlappedItemCount += Amount;
+		bShouldTraceForItems = true;
+	}
+}
+
+void AVRShooterCharacter::TraceForItems()
+{
+	if (bShouldTraceForItems)
+	{
+		if (Combat)
+		{
+			FHitResult ItemTraceResult;
+			Combat->TraceUnderCrosshairs(ItemTraceResult);
+
+			if (ItemTraceResult.bBlockingHit)
+			{
+				AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
+
+				if (HitItem && HitItem->GetPickupWidget())
+				{
+					// Show item's Pickup Widget
+					HitItem->RotateWidgetToPlayer(Camera->GetComponentLocation());
+					HitItem->GetPickupWidget()->SetVisibility(true);
+				}
+
+				// We hit an AItem last frame
+				if (TraceHitItemLastFrame)
+				{
+					if (HitItem != TraceHitItemLastFrame)
+					{
+						// We are hitting a different AItem this frame from last frame or AItem is NULL
+						TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+					}
+				}
+				// Store a reference to HitItem for next frame;
+				TraceHitItemLastFrame = HitItem;
+			}
+		}
+	}
+	else if (TraceHitItemLastFrame)
+	{
+		// No longer overlapping any items, Item last frame should not show widget
+		TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+	}
 }
 
 void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
