@@ -61,6 +61,9 @@ protected:
 	// Sets the ActiveStars array of bools based on rarity
 	void SetActiveStas();
 
+	// Sets properties of the Item's components based on State
+	void SetItemProperties(EItemState State);
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 
@@ -105,5 +108,5 @@ public:
 	FORCEINLINE UBoxComponent* GetCollisionBox() const { return CollisionBox; }
 	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
 	FORCEINLINE EItemState GetItemState() const { return ItemState; }
-	FORCEINLINE void SetItemState(EItemState State) { ItemState = State; }
+	void SetItemState(EItemState State);
 };

@@ -14,20 +14,65 @@
 UCombatComponent::UCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-
 }
 
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
 
+AWeapon* UCombatComponent::SpawnDefaultWeapon()
+{
+	// Check the TSubclassOf variable
+	if (DefaultWeaponClass)
+	{
+		// Spawn the Weapon
+		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+	}
+
+	return nullptr;
+}
+
+void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
+{
+	if (WeaponToEquip)
+	{
+		// Get the HandMesh and the HandSocket
+		USkeletalMeshComponent* HandMesh = Character->GetRightHandController()->GetHandMesh();
+		const USkeletalMeshSocket* HandSocket = HandMesh->GetSocketByName(FName("RightHandSocket"));
+
+		if (HandSocket)
+		{
+			// Attach the Weapon to the HandSocket
+			HandSocket->AttachActor(WeaponToEquip, HandMesh);
+
+			EquippedWeapon = WeaponToEquip;
+			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
+		}
+	}
+}
+
+void UCombatComponent::DropWeapon()
+{
+	if (EquippedWeapon)
+	{
+		FDetachmentTransformRules DetachmentTransformRules(EDetachmentRule::KeepWorld, true);
+		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransformRules);
+
+		EquippedWeapon->SetItemState(EItemState::EIS_Falling);
+		EquippedWeapon->ThrowWeapon();
+	}
+}
+
+void UCombatComponent::SwapWeapon(AWeapon* WeaponToSwap)
+{
+	DropWeapon();
+	EquipWeapon(WeaponToSwap);
 }
 
 void UCombatComponent::FireButtonPressed()
@@ -183,39 +228,4 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	return false;
 }
 
-AWeapon* UCombatComponent::SpawnDefaultWeapon()
-{
-	// Check the TSubclassOf variable
-	if (DefaultWeaponClass)
-	{
-		// Spawn the Weapon
-		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
-	}
-
-	return nullptr;
-}
-
-void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
-{
-	if (WeaponToEquip)
-	{
-		// Set AreaSphere to ignore all Collision Channels
-		WeaponToEquip->GetAreaSphere()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		// Set CollisionBox to ignore all Collision Channels
-		WeaponToEquip->GetCollisionBox()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-
-		// Get the HandMesh and the HandSocket
-		USkeletalMeshComponent* HandMesh = Character->GetRightHandController()->GetHandMesh();
-		const USkeletalMeshSocket* HandSocket = HandMesh->GetSocketByName(FName("RightHandSocket"));
-
-		if (HandSocket)
-		{
-			// Attach the Weapon to the HandSocket
-			HandSocket->AttachActor(WeaponToEquip, HandMesh);
-		
-			EquippedWeapon = WeaponToEquip;
-			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
-		}
-	}
-}
 

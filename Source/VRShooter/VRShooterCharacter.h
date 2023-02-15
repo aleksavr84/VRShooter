@@ -42,6 +42,8 @@ private:
 	void FireButtonReleased();
 	void AimingButtonPressed();
 	void AimingButtonReleased();
+	void SelectButtonPressed();
+	void SelectButtonReleased();
 
 	// Teleport
 	void BeginTeleport();
@@ -53,11 +55,16 @@ private:
 	void UpdateSpline(const TArray<FVector>& Path);
 
 	// Tracing
+
+	// The item currently hit by our trace in TraceForItems (could be null!)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	class AItem* TraceHitItem;
+	
 	bool bShouldTraceForItems = false;
 	int8 OverlappedItemCount;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
-	class AItem* TraceHitItemLastFrame;
+	AItem* TraceHitItemLastFrame;
 
 private:
 	// Components

@@ -34,6 +34,9 @@ protected:
 	// Weapon
 	class AWeapon* SpawnDefaultWeapon();
 	void EquipWeapon(AWeapon* WeaponToEquip);
+	void DropWeapon();
+	// Drops currently equipped Weapon and Equips TraceHitItem
+	void SwapWeapon(AWeapon* WeaponToSwap);
 
 private:
 	UPROPERTY()

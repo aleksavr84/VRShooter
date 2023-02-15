@@ -12,6 +12,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "CombatComponent.h"
 #include "Item.h"
+#include "Weapon.h"
 #include "Components/WidgetComponent.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
@@ -308,26 +309,26 @@ void AVRShooterCharacter::TraceForItems()
 
 			if (ItemTraceResult.bBlockingHit)
 			{
-				AItem* HitItem = Cast<AItem>(ItemTraceResult.GetActor());
+				TraceHitItem = Cast<AItem>(ItemTraceResult.GetActor());
 
-				if (HitItem && HitItem->GetPickupWidget())
+				if (TraceHitItem && TraceHitItem->GetPickupWidget())
 				{
 					// Show item's Pickup Widget
-					HitItem->RotateWidgetToPlayer(Camera->GetComponentLocation());
-					HitItem->GetPickupWidget()->SetVisibility(true);
+					TraceHitItem->RotateWidgetToPlayer(Camera->GetComponentLocation());
+					TraceHitItem->GetPickupWidget()->SetVisibility(true);
 				}
 
 				// We hit an AItem last frame
 				if (TraceHitItemLastFrame)
 				{
-					if (HitItem != TraceHitItemLastFrame)
+					if (TraceHitItem != TraceHitItemLastFrame)
 					{
 						// We are hitting a different AItem this frame from last frame or AItem is NULL
 						TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
 					}
 				}
 				// Store a reference to HitItem for next frame;
-				TraceHitItemLastFrame = HitItem;
+				TraceHitItemLastFrame = TraceHitItem;
 			}
 		}
 	}
@@ -353,6 +354,8 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction(TEXT("FireButton"), IE_Released, this, &AVRShooterCharacter::FireButtonReleased);
 	PlayerInputComponent->BindAction(TEXT("AimingButton"), IE_Pressed, this, &AVRShooterCharacter::AimingButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("AimingButton"), IE_Released, this, &AVRShooterCharacter::AimingButtonReleased);
+	PlayerInputComponent->BindAction(TEXT("Select"), IE_Pressed, this, &AVRShooterCharacter::SelectButtonPressed);
+	PlayerInputComponent->BindAction(TEXT("Select"), IE_Released, this, &AVRShooterCharacter::SelectButtonReleased);
 }
 
 void AVRShooterCharacter::MoveForward(float value)
@@ -404,14 +407,6 @@ void AVRShooterCharacter::FinishTeleport()
 	StartFade(1, 0);
 }
 
-void AVRShooterCharacter::AimingButtonPressed()
-{
-}
-
-void AVRShooterCharacter::AimingButtonReleased()
-{
-}
-
 void AVRShooterCharacter::FireButtonPressed()
 {
 	if (Combat)
@@ -426,4 +421,31 @@ void AVRShooterCharacter::FireButtonReleased()
 	{
 		Combat->FireButtonReleased();
 	}
+}
+
+void AVRShooterCharacter::AimingButtonPressed()
+{
+}
+
+void AVRShooterCharacter::AimingButtonReleased()
+{
+}
+
+void AVRShooterCharacter::SelectButtonPressed()
+{
+	if (Combat)
+	{
+		if (TraceHitItem)
+		{
+			auto TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
+			Combat->SwapWeapon(TraceHitWeapon);
+			TraceHitItem = nullptr;
+			TraceHitItemLastFrame = nullptr;
+		}
+	}
+}
+
+void AVRShooterCharacter::SelectButtonReleased()
+{
+
 }
