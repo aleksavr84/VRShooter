@@ -80,6 +80,12 @@ void AVRShooterCharacter::BeginPlay()
 	{
 		LeftController->PairController(RightController);
 	}
+
+	// Spawn the DefaultWeapon and Equip it
+	if (Combat)
+	{
+		Combat->EquipWeapon(Combat->SpawnDefaultWeapon());
+	}
 }
 
 void AVRShooterCharacter::Tick(float DeltaTime)

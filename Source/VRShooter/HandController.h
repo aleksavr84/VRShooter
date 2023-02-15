@@ -48,6 +48,9 @@ private:
 private:
 	// Components
 	UPROPERTY(EditAnywhere, Category = Initialization)
+	USkeletalMeshComponent* HandMesh;
+
+	UPROPERTY(EditAnywhere, Category = Initialization)
 	USkeletalMeshComponent* WeaponMesh;
 
 	UPROPERTY(EditDefaultsOnly)
@@ -55,7 +58,9 @@ private:
 
 public:
 	void SetHand(EControllerHand Hand) { MotionController->SetTrackingSource(Hand); }
+	bool bMirroring = false;
 	USkeletalMeshComponent* GetWeaponMesh() { return WeaponMesh; }
+	USkeletalMeshComponent* GetHandMesh() { return HandMesh; }
 	void PairController(AHandController* Controller);
 
 	void Grip();

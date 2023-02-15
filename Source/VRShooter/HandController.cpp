@@ -13,9 +13,11 @@ AHandController::AHandController()
 	SetRootComponent(MotionController);
 	MotionController->bDisplayDeviceModel = false;
 
-	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("WeaponMesh"));
-	WeaponMesh->SetupAttachment(MotionController);
+	HandMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("HandMesh"));
+	HandMesh->SetupAttachment(MotionController);
 
+	//WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("WeaponMesh"));
+	//WeaponMesh->SetupAttachment(HandMesh);
 }
 
 void AHandController::BeginPlay()

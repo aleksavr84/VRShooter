@@ -6,6 +6,9 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "DrawDebugHelpers.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Weapon.h"
+#include "Components/BoxComponent.h"
+#include "Components/SphereComponent.h"
 
 
 UCombatComponent::UCombatComponent()
@@ -65,69 +68,72 @@ void UCombatComponent::StartFireTimer()
 
 void UCombatComponent::FireWeapon()
 {
-	if (FireSound)
+	if (EquippedWeapon)
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
-	}
-
-	const USkeletalMeshComponent* WeaponMesh = Character->GetRightHandController()->GetWeaponMesh();
-
-	if (WeaponMesh)
-	{
-		const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName("Muzzle");
-
-		if (BarrelSocket)
+		if (FireSound)
 		{
-			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
+			UGameplayStatics::PlaySound2D(this, FireSound);
+		}
 
-			if (MuzzleFlash)
+		const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemMesh();
+
+		if (WeaponMesh)
+		{
+			const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(FName("Muzzle"));
+
+			if (BarrelSocket)
 			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
-			}
+				const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
 
-			FHitResult FireHit;
-			const FVector Start{ SocketTransform.GetLocation() };
-			const FQuat Rotation{ SocketTransform.GetRotation() };
-			const FVector RotationAxis{ Rotation.GetAxisX() };
-			const FVector End{ Start + RotationAxis * 50'000.f };
-
-			FVector BeamEndPoint{ End };
-
-			GetWorld()->LineTraceSingleByChannel(
-				FireHit,
-				Start,
-				End,
-				ECollisionChannel::ECC_Visibility
-			);
-
-			if (FireHit.bBlockingHit)
-			{
-				/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
-				DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
-
-				BeamEndPoint = FireHit.Location;
-
-				if (ImpactParticles)
+				if (MuzzleFlash)
 				{
-					UGameplayStatics::SpawnEmitterAtLocation(
-						GetWorld(),
-						ImpactParticles,
-						FireHit.Location
-					);
+					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
 				}
-			}
 
-			if (BeamParticles)
-			{
-				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
-					GetWorld(),
-					BeamParticles,
-					SocketTransform
+				FHitResult FireHit;
+				const FVector Start{ SocketTransform.GetLocation() };
+				const FQuat Rotation{ SocketTransform.GetRotation() };
+				const FVector RotationAxis{ Rotation.GetAxisX() };
+				const FVector End{ Start + RotationAxis * 50'000.f };
+
+				FVector BeamEndPoint{ End };
+
+				GetWorld()->LineTraceSingleByChannel(
+					FireHit,
+					Start,
+					End,
+					ECollisionChannel::ECC_Visibility
 				);
 
-				if (Beam)
+				if (FireHit.bBlockingHit)
 				{
-					Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+					/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
+					DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
+
+					BeamEndPoint = FireHit.Location;
+
+					if (ImpactParticles)
+					{
+						UGameplayStatics::SpawnEmitterAtLocation(
+							GetWorld(),
+							ImpactParticles,
+							FireHit.Location
+						);
+					}
+				}
+
+				if (BeamParticles)
+				{
+					UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+						GetWorld(),
+						BeamParticles,
+						SocketTransform
+					);
+
+					if (Beam)
+					{
+						Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+					}
 				}
 			}
 		}
@@ -175,5 +181,41 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	}
 
 	return false;
+}
+
+AWeapon* UCombatComponent::SpawnDefaultWeapon()
+{
+	// Check the TSubclassOf variable
+	if (DefaultWeaponClass)
+	{
+		// Spawn the Weapon
+		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+	}
+
+	return nullptr;
+}
+
+void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
+{
+	if (WeaponToEquip)
+	{
+		// Set AreaSphere to ignore all Collision Channels
+		WeaponToEquip->GetAreaSphere()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		// Set CollisionBox to ignore all Collision Channels
+		WeaponToEquip->GetCollisionBox()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+
+		// Get the HandMesh and the HandSocket
+		USkeletalMeshComponent* HandMesh = Character->GetRightHandController()->GetHandMesh();
+		const USkeletalMeshSocket* HandSocket = HandMesh->GetSocketByName(FName("RightHandSocket"));
+
+		if (HandSocket)
+		{
+			// Attach the Weapon to the HandSocket
+			HandSocket->AttachActor(WeaponToEquip, HandMesh);
+		
+			EquippedWeapon = WeaponToEquip;
+			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
+		}
+	}
 }
 

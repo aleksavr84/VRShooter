@@ -31,11 +31,21 @@ protected:
 	// Line trace for Items under the crosshairs
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult);
 
+	// Weapon
+	class AWeapon* SpawnDefaultWeapon();
+	void EquipWeapon(AWeapon* WeaponToEquip);
+
 private:
 	UPROPERTY()
 	class AVRShooterCharacter* Character;
 
 	// Weapon
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	AWeapon* EquippedWeapon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<AWeapon> DefaultWeaponClass;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* FireSound;
 
