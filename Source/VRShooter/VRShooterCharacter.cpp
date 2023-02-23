@@ -351,6 +351,30 @@ void AVRShooterCharacter::TraceForItems()
 	}
 }
 
+FVector AVRShooterCharacter::GetCameraInterpLocation()
+{
+	const FVector CameraWorldLocation{ Camera->GetComponentLocation() };
+	const FVector CameraForward{ Camera->GetForwardVector() };
+	const FVector CameraUp{ Camera->GetUpVector() };
+
+	// Desired = CameraWorldLocation + Forward * A + Up * B
+	return CameraWorldLocation + 
+		CameraForward * 
+		CameraInterpDistance + 
+		CameraUp * 
+		CameraInterpElevation;
+}
+
+void AVRShooterCharacter::GetPickupItem(AItem* Item)
+{
+	auto Weapon = Cast<AWeapon>(Item);
+
+	if (Weapon && Combat)
+	{
+		Combat->SwapWeapon(Weapon);
+	}
+}
+
 void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -447,15 +471,9 @@ void AVRShooterCharacter::AimingButtonReleased()
 
 void AVRShooterCharacter::SelectButtonPressed()
 {
-	if (Combat)
+	if (Combat && TraceHitItem)
 	{
-		if (TraceHitItem)
-		{
-			auto TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
-			Combat->SwapWeapon(TraceHitWeapon);
-			TraceHitItem = nullptr;
-			TraceHitItemLastFrame = nullptr;
-		}
+		TraceHitItem->StartItemCurve(this);
 	}
 }
 

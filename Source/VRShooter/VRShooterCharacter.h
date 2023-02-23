@@ -141,14 +141,26 @@ private:
 	// Object References
 	class APlayerController* PlayerController;
 
+	// CameraInterp
+	// Distance outward from the camera for the interp destination
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	float CameraInterpDistance = 250.f;
+
+	// Distance upward from the camera for the interp destination
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	float CameraInterpElevation = 65.f;
+
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
 	FORCEINLINE USkeletalMeshComponent* GetBodyMesh() const { return BodyMesh; }
 	FORCEINLINE AHandController* GetRightHandController() const { return RightController; }
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
 
-	void IncrementOverlappedItemCount(int8 Amount);
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bFireButtonPressed = false;
+
+	void IncrementOverlappedItemCount(int8 Amount);
+
+	FVector GetCameraInterpLocation();
+	void GetPickupItem(AItem* Item);
 };

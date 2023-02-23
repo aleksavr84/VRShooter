@@ -4,6 +4,15 @@
 #include "Components/ActorComponent.h"
 #include "CombatComponent.generated.h"
 
+UENUM(BlueprintType)
+enum class EAmmoType : uint8
+{
+	EAT_9mm UMETA(DisplayName = "9mm"),
+	EAT_AR UMETA(DisplayName = "AssaultRifle"),
+
+	EAT_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class VRSHOOTER_API UCombatComponent : public UActorComponent
 {
@@ -62,6 +71,11 @@ private:
 	UParticleSystem* BeamParticles;
 
 	// Combat
+
+	// Map to keep track of ammo of the different ammo types
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TMap<EAmmoType, int32> AmmoMap;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
