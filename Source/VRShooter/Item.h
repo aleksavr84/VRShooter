@@ -64,6 +64,10 @@ protected:
 	// Sets properties of the Item's components based on State
 	void SetItemProperties(EItemState State);
 
+	// Initialization
+	UPROPERTY(EditAnywhere, Category = "Initialization")
+	float BaseTurnRate = 45.f;
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 

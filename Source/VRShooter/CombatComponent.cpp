@@ -10,7 +10,6 @@
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 
-
 UCombatComponent::UCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -31,9 +30,12 @@ AWeapon* UCombatComponent::SpawnDefaultWeapon()
 	// Check the TSubclassOf variable
 	if (DefaultWeaponClass)
 	{
+		bIsEquipped = true;
 		// Spawn the Weapon
 		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
 	}
+
+	bIsEquipped = false;
 
 	return nullptr;
 }
@@ -43,7 +45,7 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
 	if (WeaponToEquip)
 	{
 		// Get the HandMesh and the HandSocket
-		USkeletalMeshComponent* HandMesh = Character->GetRightHandController()->GetHandMesh();
+		USkeletalMeshComponent* HandMesh = Character->GetBodyMesh(); //Character->GetRightHandController()->GetHandMesh();
 		const USkeletalMeshSocket* HandSocket = HandMesh->GetSocketByName(FName("RightHandSocket"));
 
 		if (HandSocket)
@@ -53,6 +55,8 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
 
 			EquippedWeapon = WeaponToEquip;
 			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
+
+			bIsEquipped = true;
 		}
 	}
 }
@@ -66,6 +70,8 @@ void UCombatComponent::DropWeapon()
 
 		EquippedWeapon->SetItemState(EItemState::EIS_Falling);
 		EquippedWeapon->ThrowWeapon();
+
+		bIsEquipped = false;
 	}
 }
 
@@ -118,6 +124,15 @@ void UCombatComponent::FireWeapon()
 		if (FireSound)
 		{
 			UGameplayStatics::PlaySound2D(this, FireSound);
+		}
+		
+		// Playing Firing Animation
+		EquippedWeapon->Fire();
+
+		// Playing Haptic Effect
+		if (Character->GetRightHandController())
+		{
+			Character->GetRightHandController()->PlayHapticEffect();
 		}
 
 		const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemMesh();

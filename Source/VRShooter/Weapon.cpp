@@ -1,4 +1,8 @@
 #include "Weapon.h"
+#include "Animation/AnimationAsset.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Casing.h"
 
 AWeapon::AWeapon() :
 	ThrowWeaponTime(.5f),
@@ -50,4 +54,35 @@ void AWeapon::StopFalling()
 	GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
 
 	SetItemState(EItemState::EIS_Pickup);
+}
+
+void AWeapon::Fire()
+{
+	if (FireAnimation)
+	{
+		GetItemMesh()->PlayAnimation(FireAnimation, false);
+	}
+
+	if (CasingClass)
+	{
+		USkeletalMeshComponent* WeaponMesh = GetItemMesh();
+		const USkeletalMeshSocket* AmmoEjectSocket = WeaponMesh->GetSocketByName(FName("AmmoEject"));
+
+		if (AmmoEjectSocket)
+		{
+			FTransform SocketTransform = AmmoEjectSocket->GetSocketTransform(WeaponMesh);
+			FActorSpawnParameters SpawnParams;
+			UWorld* World = GetWorld();
+
+			if (World)
+			{
+				World->SpawnActor<ACasing>(
+					CasingClass,
+					SocketTransform.GetLocation(),
+					SocketTransform.GetRotation().Rotator(),
+					SpawnParams
+					);
+			}
+		}
+	}
 }

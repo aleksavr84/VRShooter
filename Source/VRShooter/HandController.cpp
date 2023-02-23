@@ -13,11 +13,11 @@ AHandController::AHandController()
 	SetRootComponent(MotionController);
 	MotionController->bDisplayDeviceModel = false;
 
-	HandMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("HandMesh"));
-	HandMesh->SetupAttachment(MotionController);
+	RightHandMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("RightHandMesh"));
+	RightHandMesh->SetupAttachment(MotionController);
 
-	//WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("WeaponMesh"));
-	//WeaponMesh->SetupAttachment(HandMesh);
+	LeftHandMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("LeftHandMesh"));
+	LeftHandMesh->SetupAttachment(MotionController);
 }
 
 void AHandController::BeginPlay()
@@ -53,17 +53,7 @@ void AHandController::ActorBeginOverlap(AActor* OverlappedActor, AActor* OtherAc
 	if (!bCanClimb && bNewCanClimb)
 	{
 		//UE_LOG(LogTemp, Warning, TEXT("Can Climb!"));
-		PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Cast<AVRShooterCharacter>(GetOwner())->Controller) : PlayerController;
-
-		if (PlayerController && HapticEffect)
-		{
-			PlayerController->PlayHapticEffect(
-				HapticEffect,
-				MotionController->GetTrackingSource(),
-				1,
-				false
-			);
-		}
+		PlayHapticEffect();
 	}
 
 	bCanClimb = bNewCanClimb;
@@ -123,6 +113,21 @@ void AHandController::Release()
 		bIsClimbing = false;
 
 		SetMovementMode(EMovementMode::MOVE_Falling);
+	}
+}
+
+void AHandController::PlayHapticEffect()
+{
+	PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Cast<AVRShooterCharacter>(GetOwner())->Controller) : PlayerController;
+
+	if (PlayerController && HapticEffect)
+	{
+		PlayerController->PlayHapticEffect(
+			HapticEffect,
+			MotionController->GetTrackingSource(),
+			1,
+			false
+		);
 	}
 }
 

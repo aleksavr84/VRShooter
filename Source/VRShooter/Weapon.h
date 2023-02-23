@@ -17,6 +17,12 @@ protected:
 	void StopFalling();
 
 private:
+	UPROPERTY(EditAnywhere, Category = "Weapon Properties")
+	class UAnimationAsset* FireAnimation;
+
+	UPROPERTY(EditAnywhere, Category = "Weapon Properties")
+	TSubclassOf<class ACasing> CasingClass;
+
 	FTimerHandle ThrowWeaponTimer;
 	float ThrowWeaponTime;
 	bool bFalling;
@@ -24,4 +30,5 @@ private:
 public:
 	// Adds an impulse to the Weapon
 	void ThrowWeapon();
+	void Fire();
 };

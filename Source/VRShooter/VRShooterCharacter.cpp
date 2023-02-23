@@ -14,6 +14,7 @@
 #include "Item.h"
 #include "Weapon.h"
 #include "Components/WidgetComponent.h"
+#include "Engine/SkeletalMeshSocket.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
 {
@@ -24,6 +25,9 @@ AVRShooterCharacter::AVRShooterCharacter()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(FName("Camera"));
 	Camera->SetupAttachment(VRRoot);
+
+	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
+	BodyMesh->SetupAttachment(Camera, FName());
 
 	TeleportPath = CreateDefaultSubobject<USplineComponent>(FName("TeleportPath"));
 	TeleportPath->SetupAttachment(VRRoot);
@@ -59,27 +63,30 @@ void AVRShooterCharacter::BeginPlay()
 		PostProcessComponent->AddOrUpdateBlendable(BlinkerMaterialInstance);
 	}
 
-	LeftController = GetWorld()->SpawnActor<AHandController>(HandControllerClass);
-
-	if (LeftController)
+	if (HandControllerClass)
 	{
-		LeftController->AttachToComponent(VRRoot, FAttachmentTransformRules::KeepRelativeTransform);
-		LeftController->SetHand(EControllerHand::Left);
-		LeftController->SetOwner(this);
-	}
+		LeftController = GetWorld()->SpawnActor<AHandController>(HandControllerClass);
 
-	RightController = GetWorld()->SpawnActor<AHandController>(HandControllerClass);
+		if (LeftController)
+		{
+			LeftController->AttachToComponent(VRRoot, FAttachmentTransformRules::KeepRelativeTransform);
+			LeftController->SetHand(EControllerHand::Left);
+			LeftController->SetOwner(this);
+		}
 
-	if (RightController)
-	{
-		RightController->AttachToComponent(VRRoot, FAttachmentTransformRules::KeepRelativeTransform);
-		RightController->SetHand(EControllerHand::Right);
-		RightController->SetOwner(this);
-	}
+		RightController = GetWorld()->SpawnActor<AHandController>(HandControllerClass);
 
-	if (LeftController && RightController)
-	{
-		LeftController->PairController(RightController);
+		if (RightController)
+		{
+			RightController->AttachToComponent(VRRoot, FAttachmentTransformRules::KeepRelativeTransform);
+			RightController->SetHand(EControllerHand::Right);
+			RightController->SetOwner(this);
+		}
+
+		if (LeftController && RightController)
+		{
+			LeftController->PairController(RightController);
+		}
 	}
 
 	// Spawn the DefaultWeapon and Equip it
@@ -99,17 +106,22 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 	AddActorWorldOffset(NewCameraOffset);
 	VRRoot->AddWorldOffset(-NewCameraOffset);
 
-	UpdateDestinationMarker();
-	UpdateBlinkers();
+
+	//UpdateDestinationMarker();
+	
+	//UpdateBlinkers();
 
 	TraceForItems();
 }
 
 bool AVRShooterCharacter::FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation)
 {
-	FVector Start = LeftController->GetActorLocation();// RightController->GetActorLocation();
-	FVector Look = LeftController->GetActorForwardVector(); // RightController->GetActorForwardVector();
-	// Look = Look.RotateAngleAxis(ControllerRotation, RightController->GetActorRightVector());
+	const USkeletalMeshSocket* TeleportSocket = BodyMesh->GetSocketByName(FName("LeftHandTeleportSocket"));
+	FTransform TeleportSocketTransform = TeleportSocket->GetSocketTransform(BodyMesh);
+	
+	FVector Start = TeleportSocketTransform.GetLocation(); //LeftController->GetActorLocation();
+	FVector Look = LeftController->GetActorForwardVector() * -1;
+    //Look = Look.RotateAngleAxis(ControllerRotation, RightController->GetActorRightVector());
 	Look = Look.RotateAngleAxis(ControllerRotation, LeftController->GetActorRightVector());
 
 	FPredictProjectilePathParams Params(
@@ -412,6 +424,7 @@ void AVRShooterCharacter::FireButtonPressed()
 	if (Combat)
 	{
 		Combat->FireButtonPressed();
+		bFireButtonPressed = true;
 	}
 }
 
@@ -420,6 +433,7 @@ void AVRShooterCharacter::FireButtonReleased()
 	if (Combat)
 	{
 		Combat->FireButtonReleased();
+		bFireButtonPressed = false;
 	}
 }
 

@@ -40,6 +40,16 @@ void AItem::BeginPlay()
 	SetItemProperties(ItemState);
 }
 
+void AItem::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (ItemMesh && ItemState == EItemState::EIS_Pickup)
+	{
+		ItemMesh->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
+	}
+}
+
 void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
 	if (OtherActor)
@@ -64,12 +74,6 @@ void AItem::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor*
 			VRShooterCharacter->IncrementOverlappedItemCount(-1);
 		}
 	}
-}
-
-void AItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
 }
 
 void AItem::SetItemState(EItemState State)

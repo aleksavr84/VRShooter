@@ -71,10 +71,13 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* Camera;
 
-	UPROPERTY(VisibleAnywhere, Category = Initialization)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* BodyMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	class AHandController* LeftController;
 
-	UPROPERTY(VisibleAnywhere, Category = Initialization)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	AHandController* RightController;
 
 	UPROPERTY(VisibleAnywhere)
@@ -130,7 +133,7 @@ private:
 	class UCurveFloat* RadiusVsVelocity;
 
 	UPROPERTY(EditAnywhere, Category = Initialization)
-	float ControllerRotation = 0.f;
+	float ControllerRotation = -90.f;
 
 	UPROPERTY(EditDefaultsOnly, Category = Initialization)
 	TSubclassOf<AHandController> HandControllerClass;
@@ -140,8 +143,12 @@ private:
 
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
+	FORCEINLINE USkeletalMeshComponent* GetBodyMesh() const { return BodyMesh; }
 	FORCEINLINE AHandController* GetRightHandController() const { return RightController; }
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
 
 	void IncrementOverlappedItemCount(int8 Amount);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bFireButtonPressed = false;
 };

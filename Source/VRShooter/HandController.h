@@ -48,10 +48,10 @@ private:
 private:
 	// Components
 	UPROPERTY(EditAnywhere, Category = Initialization)
-	USkeletalMeshComponent* HandMesh;
-
+	USkeletalMeshComponent* RightHandMesh;
+	
 	UPROPERTY(EditAnywhere, Category = Initialization)
-	USkeletalMeshComponent* WeaponMesh;
+	USkeletalMeshComponent* LeftHandMesh;
 
 	UPROPERTY(EditDefaultsOnly)
 	class UHapticFeedbackEffect_Base* HapticEffect;
@@ -59,12 +59,17 @@ private:
 public:
 	void SetHand(EControllerHand Hand) { MotionController->SetTrackingSource(Hand); }
 	bool bMirroring = false;
-	USkeletalMeshComponent* GetWeaponMesh() { return WeaponMesh; }
-	USkeletalMeshComponent* GetHandMesh() { return HandMesh; }
+
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* GetRightHandMesh() { return RightHandMesh; }
+
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+	USkeletalMeshComponent* GetLeftHandMesh() { return LeftHandMesh; }
+	
 	void PairController(AHandController* Controller);
 
 	void Grip();
 	void Release();
 
-
+	void PlayHapticEffect();
 };

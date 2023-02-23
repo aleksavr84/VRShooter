@@ -4,7 +4,6 @@
 #include "Components/ActorComponent.h"
 #include "CombatComponent.generated.h"
 
-
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class VRSHOOTER_API UCombatComponent : public UActorComponent
 {
@@ -69,9 +68,15 @@ private:
 	float CameraDefaultFOV;
 	float CameraZoomedFOV;
 
+	bool bIsEquipped = false;
+
 	// Automatic Fire
 	bool bFireButtonPressed = false;
 	bool bShouldFire = true;
-	float AutomaticFireRate = 0.1f;
+	float AutomaticFireRate = 0.25f;
 	FTimerHandle AutoFireTimer;
+
+public:
+	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
+	FORCEINLINE bool GetIsEquipped() { return bIsEquipped; }
 };

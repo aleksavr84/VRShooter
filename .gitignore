@@ -73,6 +73,6 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 
-Content/Assets/MilitaryWeapDark
-Content/Assets/SpaceShipInterior
-Content/Assets/Sounds
+Content
+
+
