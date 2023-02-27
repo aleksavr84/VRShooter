@@ -4,6 +4,7 @@
 #include "VRShooterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+//#include "Components/WidgetComponent.h"
 
 AHandController::AHandController()
 {
@@ -18,6 +19,10 @@ AHandController::AHandController()
 
 	LeftHandMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("LeftHandMesh"));
 	LeftHandMesh->SetupAttachment(MotionController);
+
+	//HUDWidget = CreateDefaultSubobject<UWidgetComponent>(FName("HUDWidget"));
+	//HUDWidget->SetupAttachment(RightHandMesh, FName());
+
 }
 
 void AHandController::BeginPlay()

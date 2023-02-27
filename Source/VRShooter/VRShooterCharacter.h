@@ -71,7 +71,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* Camera;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* BodyMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
@@ -79,6 +79,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	AHandController* RightController;
+
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	//class UWidgetComponent* HUDWidget;
 
 	UPROPERTY(VisibleAnywhere)
 	class USceneComponent* VRRoot;
@@ -150,11 +153,19 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	float CameraInterpElevation = 65.f;
 
+	// HUD
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	TSubclassOf<class AVRHUD> VRHUDClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	class AVRHUD* VRHUD;
+
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
 	FORCEINLINE USkeletalMeshComponent* GetBodyMesh() const { return BodyMesh; }
 	FORCEINLINE AHandController* GetRightHandController() const { return RightController; }
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
+	/*UWidgetComponent* GetHUDWidget() { return HUDWidget; }*/
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bFireButtonPressed = false;

@@ -81,6 +81,12 @@ void UCombatComponent::SwapWeapon(AWeapon* WeaponToSwap)
 	EquipWeapon(WeaponToSwap);
 }
 
+void UCombatComponent::InitializeAmmoMap()
+{
+	AmmoMap.Add(EAmmoType::EAT_9mm, Starting9mmAmmo);
+	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
+}
+
 void UCombatComponent::FireButtonPressed()
 {
 	bFireButtonPressed = true;

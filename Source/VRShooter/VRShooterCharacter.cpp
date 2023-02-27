@@ -15,6 +15,7 @@
 #include "Weapon.h"
 #include "Components/WidgetComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
+#include "VRHUD.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
 {
@@ -25,6 +26,9 @@ AVRShooterCharacter::AVRShooterCharacter()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(FName("Camera"));
 	Camera->SetupAttachment(VRRoot);
+
+	//HUDWidget = CreateDefaultSubobject<UWidgetComponent>(FName("HUDWidget"));
+	//HUDWidget->SetupAttachment(Camera, FName());
 
 	BodyMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BodyMesh"));
 	BodyMesh->SetupAttachment(Camera, FName());
@@ -81,6 +85,14 @@ void AVRShooterCharacter::BeginPlay()
 			RightController->AttachToComponent(VRRoot, FAttachmentTransformRules::KeepRelativeTransform);
 			RightController->SetHand(EControllerHand::Right);
 			RightController->SetOwner(this);
+
+			//// Spawning HUD
+			FActorSpawnParameters SpawnParam;
+			SpawnParam.Instigator = this;
+			VRHUD = GetWorld()->SpawnActor<AVRHUD>(VRHUDClass, SpawnParam);
+			VRHUD->AttachToComponent(Cast<USceneComponent>(RightController), FAttachmentTransformRules::KeepRelativeTransform);
+			//VRHUD->SetHandController(RightController);
+			VRHUD->SetOwner(this);
 		}
 
 		if (LeftController && RightController)
@@ -92,6 +104,7 @@ void AVRShooterCharacter::BeginPlay()
 	// Spawn the DefaultWeapon and Equip it
 	if (Combat)
 	{
+		Combat->InitializeAmmoMap();
 		Combat->EquipWeapon(Combat->SpawnDefaultWeapon());
 	}
 }

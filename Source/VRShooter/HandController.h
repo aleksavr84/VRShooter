@@ -27,6 +27,9 @@ private:
 	class AVRShooterCharacter* PlayerCharacter;
 	class APlayerController* PlayerController;
 
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	//class UWidgetComponent* HUDWidget;
+
 	// Callbacks
 	UFUNCTION()
 	void ActorBeginOverlap(AActor* OverlappedActor, AActor* OtherActor);
@@ -65,6 +68,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* GetLeftHandMesh() { return LeftHandMesh; }
+
+	//UWidgetComponent* GetHUDWidget() { return HUDWidget; }
 	
 	void PairController(AHandController* Controller);
 

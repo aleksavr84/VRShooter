@@ -45,6 +45,8 @@ protected:
 	void DropWeapon();
 	// Drops currently equipped Weapon and Equips TraceHitItem
 	void SwapWeapon(AWeapon* WeaponToSwap);
+	// Initialize the AmmoMap with Ammo values
+	void InitializeAmmoMap();
 
 private:
 	UPROPERTY()
@@ -75,7 +77,15 @@ private:
 	// Map to keep track of ammo of the different ammo types
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	TMap<EAmmoType, int32> AmmoMap;
-	
+
+	// Starting Ammount of 9mm ammo
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	int32 Starting9mmAmmo = 85;
+
+	// Starting Ammount of Assault Rifle ammo
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	int32 StartingARAmmo = 120;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
