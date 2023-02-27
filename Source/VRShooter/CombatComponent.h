@@ -13,6 +13,16 @@ enum class EAmmoType : uint8
 	EAT_MAX UMETA(DisplayName = "DefaultMAX")
 };
 
+UENUM(BlueprintType)
+enum class ECombatState : uint8
+{
+	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
+	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
+	ECS_Reloading UMETA(DisplayName = "Reloading"),
+
+	ECS_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class VRSHOOTER_API UCombatComponent : public UActorComponent
 {
@@ -35,6 +45,10 @@ protected:
 	void AutoFireReset();
 
 	void FireWeapon();
+	void PlayFireSound();
+	void SendBullet();
+	void PlayGunFireMontage();
+	void PlayHapticEffect();
 
 	// Line trace for Items under the crosshairs
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult);
@@ -47,6 +61,8 @@ protected:
 	void SwapWeapon(AWeapon* WeaponToSwap);
 	// Initialize the AmmoMap with Ammo values
 	void InitializeAmmoMap();
+	// Check to make sure our waepon has ammo
+	bool WeaponHasAmmo();
 
 private:
 	UPROPERTY()
@@ -99,6 +115,9 @@ private:
 	bool bShouldFire = true;
 	float AutomaticFireRate = 0.25f;
 	FTimerHandle AutoFireTimer;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
+	ECombatState CombatState  = ECombatState::ECS_Unoccupied;
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))

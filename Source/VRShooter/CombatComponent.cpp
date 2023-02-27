@@ -87,10 +87,17 @@ void UCombatComponent::InitializeAmmoMap()
 	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
 }
 
+bool UCombatComponent::WeaponHasAmmo()
+{
+	if (EquippedWeapon == nullptr) return false;
+
+	return EquippedWeapon->GetAmmo() > 0;
+}
+
 void UCombatComponent::FireButtonPressed()
 {
 	bFireButtonPressed = true;
-	StartFireTimer();
+	FireWeapon();
 }
 
 void UCombatComponent::FireButtonReleased()
@@ -98,111 +105,142 @@ void UCombatComponent::FireButtonReleased()
 	bFireButtonPressed = false;
 }
 
-void UCombatComponent::AutoFireReset()
+void UCombatComponent::FireWeapon()
 {
-	bShouldFire = true;
-
-	if (bFireButtonPressed)
+	if (EquippedWeapon)
 	{
-		StartFireTimer();
+		if (CombatState != ECombatState::ECS_Unoccupied) return;
+
+		if (WeaponHasAmmo())
+		{
+			PlayFireSound();
+			SendBullet();
+			PlayGunFireMontage();
+			PlayHapticEffect();
+			EquippedWeapon->DecrementAmmo();
+
+			StartFireTimer();
+		}
+	}
+}
+
+void UCombatComponent::PlayFireSound()
+{
+	// Play fire sound
+	if (FireSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FireSound);
+	}
+}
+
+void UCombatComponent::SendBullet()
+{
+	// Send bullet
+	const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemMesh();
+
+	if (WeaponMesh)
+	{
+		const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(FName("Muzzle"));
+
+		if (BarrelSocket)
+		{
+			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
+
+			if (MuzzleFlash)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+			}
+
+			FHitResult FireHit;
+			const FVector Start{ SocketTransform.GetLocation() };
+			const FQuat Rotation{ SocketTransform.GetRotation() };
+			const FVector RotationAxis{ Rotation.GetAxisX() };
+			const FVector End{ Start + RotationAxis * 50'000.f };
+
+			FVector BeamEndPoint{ End };
+
+			GetWorld()->LineTraceSingleByChannel(
+				FireHit,
+				Start,
+				End,
+				ECollisionChannel::ECC_Visibility
+			);
+
+			if (FireHit.bBlockingHit)
+			{
+				/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
+				DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
+
+				BeamEndPoint = FireHit.Location;
+
+				if (ImpactParticles)
+				{
+					UGameplayStatics::SpawnEmitterAtLocation(
+						GetWorld(),
+						ImpactParticles,
+						FireHit.Location
+					);
+				}
+			}
+
+			if (BeamParticles)
+			{
+				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+					GetWorld(),
+					BeamParticles,
+					SocketTransform
+				);
+
+				if (Beam)
+				{
+					Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+				}
+			}
+		}
+	}
+}
+
+void UCombatComponent::PlayGunFireMontage()
+{
+	// Playing Firing Animation
+	EquippedWeapon->Fire();
+}
+
+void UCombatComponent::PlayHapticEffect()
+{
+	// Playing Haptic Effect
+	if (Character->GetRightHandController())
+	{
+		Character->GetRightHandController()->PlayHapticEffect();
 	}
 }
 
 void UCombatComponent::StartFireTimer()
 {
-	if (bShouldFire)
-	{
-		FireWeapon();
-		bShouldFire = false;
-		Character->GetWorldTimerManager().SetTimer(
-			AutoFireTimer,
-			this,
-			&UCombatComponent::AutoFireReset,
-			AutomaticFireRate
-		);
-	}
+	CombatState = ECombatState::ECS_FireTimerInProgress;
+
+	Character->GetWorldTimerManager().SetTimer(
+		AutoFireTimer,
+		this,
+		&UCombatComponent::AutoFireReset,
+		AutomaticFireRate
+	);
 }
 
-void UCombatComponent::FireWeapon()
+void UCombatComponent::AutoFireReset()
 {
-	if (EquippedWeapon)
+	CombatState = ECombatState::ECS_Unoccupied;
+
+	if (WeaponHasAmmo())
 	{
-		if (FireSound)
+		if (bFireButtonPressed)
 		{
-			UGameplayStatics::PlaySound2D(this, FireSound);
+			FireWeapon();
 		}
-		
-		// Playing Firing Animation
-		EquippedWeapon->Fire();
-
-		// Playing Haptic Effect
-		if (Character->GetRightHandController())
-		{
-			Character->GetRightHandController()->PlayHapticEffect();
-		}
-
-		const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemMesh();
-
-		if (WeaponMesh)
-		{
-			const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(FName("Muzzle"));
-
-			if (BarrelSocket)
-			{
-				const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
-
-				if (MuzzleFlash)
-				{
-					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
-				}
-
-				FHitResult FireHit;
-				const FVector Start{ SocketTransform.GetLocation() };
-				const FQuat Rotation{ SocketTransform.GetRotation() };
-				const FVector RotationAxis{ Rotation.GetAxisX() };
-				const FVector End{ Start + RotationAxis * 50'000.f };
-
-				FVector BeamEndPoint{ End };
-
-				GetWorld()->LineTraceSingleByChannel(
-					FireHit,
-					Start,
-					End,
-					ECollisionChannel::ECC_Visibility
-				);
-
-				if (FireHit.bBlockingHit)
-				{
-					/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
-					DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
-
-					BeamEndPoint = FireHit.Location;
-
-					if (ImpactParticles)
-					{
-						UGameplayStatics::SpawnEmitterAtLocation(
-							GetWorld(),
-							ImpactParticles,
-							FireHit.Location
-						);
-					}
-				}
-
-				if (BeamParticles)
-				{
-					UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
-						GetWorld(),
-						BeamParticles,
-						SocketTransform
-					);
-
-					if (Beam)
-					{
-						Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
-					}
-				}
-			}
-		}
+	}
+	else
+	{
+		 // Reload Weapon
 	}
 }
 
