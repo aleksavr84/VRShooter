@@ -9,10 +9,13 @@
 #include "Weapon.h"
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
+#include "Camera/CameraComponent.h"
 
 UCombatComponent::UCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+
+	HandSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HandSceneComponent"));
 }
 
 void UCombatComponent::BeginPlay()
@@ -57,6 +60,8 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
 			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
 
 			bIsEquipped = true;
+
+			Character->ShowWeaponHUD();
 		}
 	}
 }
@@ -77,21 +82,17 @@ void UCombatComponent::DropWeapon()
 
 void UCombatComponent::SwapWeapon(AWeapon* WeaponToSwap)
 {
-	DropWeapon();
-	EquipWeapon(WeaponToSwap);
+	if (WeaponToSwap)
+	{
+		DropWeapon();
+		EquipWeapon(WeaponToSwap);
+	}
 }
 
 void UCombatComponent::InitializeAmmoMap()
 {
 	AmmoMap.Add(EAmmoType::EAT_9mm, Starting9mmAmmo);
 	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
-}
-
-bool UCombatComponent::WeaponHasAmmo()
-{
-	if (EquippedWeapon == nullptr) return false;
-
-	return EquippedWeapon->GetAmmo() > 0;
 }
 
 void UCombatComponent::FireButtonPressed()
@@ -240,7 +241,139 @@ void UCombatComponent::AutoFireReset()
 	}
 	else
 	{
-		 // Reload Weapon
+		ReloadWeapon();
+	}
+}
+
+void UCombatComponent::ReloadWeapon()
+{
+	if (CombatState != ECombatState::ECS_Unoccupied) return;	
+	if (EquippedWeapon == nullptr) return;
+	
+	// Do we have ammo of the correct type?
+	if (CarryingAmmo() && 
+		(EquippedWeapon->GetAmmo() != EquippedWeapon->GetMagazineCapacity()))
+	{
+		CombatState = ECombatState::ECS_Reloading;
+
+		if (Character)
+		{
+			UAnimInstance* AnimInstace = Character->GetBodyMesh()->GetAnimInstance();
+
+			if (ReloadMontage && AnimInstace)
+			{
+				AnimInstace->Montage_Play(ReloadMontage);
+				AnimInstace->Montage_JumpToSection(
+					EquippedWeapon->GetReloadMontageSection());
+
+				EquippedWeapon->SetMovingClip(true);
+			}
+			// if no valid Reload montage playing the EquippedWeapon Reaload Animation Sequence
+			else
+			{
+				EquippedWeapon->Reload();
+				WeaponReloadAnimStart();
+			}
+		}
+	}
+}
+
+bool UCombatComponent::WeaponHasAmmo()
+{
+	if (EquippedWeapon == nullptr) return false;
+
+	return EquippedWeapon->GetAmmo() > 0;
+}
+
+bool UCombatComponent::CarryingAmmo()
+{
+	if (EquippedWeapon == nullptr) return false;
+
+	auto AmmoType = EquippedWeapon->GetAmmoType();
+
+	if (AmmoMap.Contains(AmmoType))
+	{
+		return AmmoMap[AmmoType] > 0;
+	}
+
+	return false;
+}
+
+void UCombatComponent::GrabClip()
+{
+	if (EquippedWeapon == nullptr) return;
+	if (HandSceneComponent == nullptr) return;
+
+	if (Character)
+	{
+		// Index for the clip bone on the equipped weapon.
+		int32 ClipBoneIndex{ EquippedWeapon->GetItemMesh()->GetBoneIndex(EquippedWeapon->GetClipBoneName()) };
+		ClipTransform = EquippedWeapon->GetItemMesh()->GetBoneTransform(ClipBoneIndex);
+
+		FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
+		HandSceneComponent->AttachToComponent(Character->GetBodyMesh(), AttachmentRules, FName(TEXT("hand_l")));
+		HandSceneComponent->SetWorldTransform(ClipTransform);
+
+		EquippedWeapon->SetMovingClip(true);
+	}
+}
+
+void UCombatComponent::ReleaseClip()
+{
+	if (EquippedWeapon == nullptr) return;
+
+	EquippedWeapon->SetMovingClip(false);
+}
+
+void UCombatComponent::WeaponReloadAnimStart()
+{
+	Character->GetWorldTimerManager().SetTimer(
+		WeaponReloadTimer,
+		this,
+		&UCombatComponent::WeaponReloadAnimFinished,
+		WeaponReloadAnimLength
+	);
+}
+
+void UCombatComponent::WeaponReloadAnimFinished()
+{
+	FinishReloading();
+}
+
+void UCombatComponent::FinishReloading()
+{
+	// Upadate the CombatState
+	CombatState = ECombatState::ECS_Unoccupied;
+	
+	if (EquippedWeapon == nullptr) return;
+
+	const auto AmmoType = EquippedWeapon->GetAmmoType();
+
+	// Update the AmmoMap
+	if (AmmoMap.Contains(AmmoType))
+	{
+		// Ammount of ammo the Character is carrying of the EquippedWeapon type
+		int32 CarriedAmmo = AmmoMap[AmmoType];
+
+		// Space left in the magazine of EquippedWeapon
+		const int32 MagEmptySpace = 
+			EquippedWeapon->GetMagazineCapacity() - 
+			EquippedWeapon->GetAmmo();
+
+		if (MagEmptySpace > CarriedAmmo)
+		{
+			// Reload the magazine all the ammo we are carrying
+			EquippedWeapon->ReloadAmmo(CarriedAmmo);
+			CarriedAmmo = 0;
+			AmmoMap.Add(AmmoType, CarriedAmmo);
+		}
+		else
+		{
+			// fill the magazine
+			EquippedWeapon->ReloadAmmo(MagEmptySpace);
+			CarriedAmmo -= MagEmptySpace;
+			AmmoMap.Add(AmmoType, CarriedAmmo);
+		}
 	}
 }
 
@@ -269,8 +402,14 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	if (bScreenToWorld)
 	{
 		// Trace from Crosshair world location outward
-		const FVector Start{ CrosshairWorldPosition };
-		const FVector End{ Start + CrosshairWorldDirection * 50'000.f };
+		/*const FVector Start{ CrosshairWorldPosition };
+		const FVector End{ Start + CrosshairWorldDirection * 50'000.f };*/
+
+		const FVector Start{ Character->GetCameraComponent()->GetComponentLocation() };
+		const FVector End{ Start + Character->GetCameraComponent()->GetForwardVector() * 50'000.f};
+
+		DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
+
 		GetWorld()->LineTraceSingleByChannel(
 			OutHitResult,
 			Start,

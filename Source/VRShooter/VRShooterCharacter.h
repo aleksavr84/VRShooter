@@ -40,8 +40,7 @@ private:
 	void ReleaseRight() { RightController->Release(); }
 	void FireButtonPressed();
 	void FireButtonReleased();
-	void AimingButtonPressed();
-	void AimingButtonReleased();
+	void ReloadButtonPressed();
 	void SelectButtonPressed();
 	void SelectButtonReleased();
 
@@ -160,11 +159,14 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	class AVRHUD* VRHUD;
 
+	bool bWeaponHUDShowing = false;
+
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
 	FORCEINLINE USkeletalMeshComponent* GetBodyMesh() const { return BodyMesh; }
 	FORCEINLINE AHandController* GetRightHandController() const { return RightController; }
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
+	FORCEINLINE UCombatComponent* GetCombatComponent() const { return Combat; }
 	/*UWidgetComponent* GetHUDWidget() { return HUDWidget; }*/
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -174,4 +176,7 @@ public:
 
 	FVector GetCameraInterpLocation();
 	void GetPickupItem(AItem* Item);
+
+	// WeaponHUD
+	void ShowWeaponHUD();
 };

@@ -86,13 +86,13 @@ void AVRShooterCharacter::BeginPlay()
 			RightController->SetHand(EControllerHand::Right);
 			RightController->SetOwner(this);
 
-			//// Spawning HUD
-			FActorSpawnParameters SpawnParam;
-			SpawnParam.Instigator = this;
-			VRHUD = GetWorld()->SpawnActor<AVRHUD>(VRHUDClass, SpawnParam);
-			VRHUD->AttachToComponent(Cast<USceneComponent>(RightController), FAttachmentTransformRules::KeepRelativeTransform);
-			//VRHUD->SetHandController(RightController);
-			VRHUD->SetOwner(this);
+			////// Spawning HUD
+			//FActorSpawnParameters SpawnParam;
+			//SpawnParam.Instigator = this;
+			//VRHUD = GetWorld()->SpawnActor<AVRHUD>(VRHUDClass, SpawnParam);
+			//VRHUD->AttachToComponent(Cast<USceneComponent>(RightController), FAttachmentTransformRules::KeepRelativeTransform);
+			////VRHUD->SetHandController(RightController);
+			//VRHUD->SetOwner(this);
 		}
 
 		if (LeftController && RightController)
@@ -119,12 +119,30 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 	AddActorWorldOffset(NewCameraOffset);
 	VRRoot->AddWorldOffset(-NewCameraOffset);
 
-
 	//UpdateDestinationMarker();
 	
 	//UpdateBlinkers();
 
 	TraceForItems();
+}
+
+void AVRShooterCharacter::ShowWeaponHUD()
+{
+	if (Combat &&
+		Combat->GetIsEquipped() &&
+		!bWeaponHUDShowing)
+	{
+		//// Spawning HUD
+		FActorSpawnParameters SpawnParam;
+		SpawnParam.Instigator = this;
+		VRHUD = GetWorld()->SpawnActor<AVRHUD>(VRHUDClass, SpawnParam);
+		VRHUD->AttachToComponent(Cast<USceneComponent>(RightController), FAttachmentTransformRules::KeepRelativeTransform);
+		//VRHUD->SetHandController(RightController);
+		VRHUD->SetOwner(this);
+
+		bWeaponHUDShowing = true;
+	}
+
 }
 
 bool AVRShooterCharacter::FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation)
@@ -336,11 +354,13 @@ void AVRShooterCharacter::TraceForItems()
 			{
 				TraceHitItem = Cast<AItem>(ItemTraceResult.GetActor());
 
-				if (TraceHitItem && TraceHitItem->GetPickupWidget())
+				if (TraceHitItem && 
+					TraceHitItem->GetPickupWidget())
 				{
 					// Show item's Pickup Widget
 					TraceHitItem->RotateWidgetToPlayer(Camera->GetComponentLocation());
-					TraceHitItem->GetPickupWidget()->SetVisibility(true);
+					//TraceHitItem->GetPickupWidget()->SetVisibility(true);
+					TraceHitItem->ShowPickupWidget(true);
 				}
 
 				// We hit an AItem last frame
@@ -349,8 +369,9 @@ void AVRShooterCharacter::TraceForItems()
 					if (TraceHitItem != TraceHitItemLastFrame)
 					{
 						// We are hitting a different AItem this frame from last frame or AItem is NULL
-						TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
-					}
+						//TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(true);
+						TraceHitItemLastFrame->ShowPickupWidget(true);
+					} 
 				}
 				// Store a reference to HitItem for next frame;
 				TraceHitItemLastFrame = TraceHitItem;
@@ -360,7 +381,8 @@ void AVRShooterCharacter::TraceForItems()
 	else if (TraceHitItemLastFrame)
 	{
 		// No longer overlapping any items, Item last frame should not show widget
-		TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+		//TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+		TraceHitItemLastFrame->ShowPickupWidget(false);
 	}
 }
 
@@ -382,7 +404,9 @@ void AVRShooterCharacter::GetPickupItem(AItem* Item)
 {
 	auto Weapon = Cast<AWeapon>(Item);
 
-	if (Weapon && Combat)
+	if (Weapon && 
+		Combat &&
+		Combat->EquippedWeapon != Weapon)
 	{
 		Combat->SwapWeapon(Weapon);
 	}
@@ -393,16 +417,22 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	PlayerInputComponent->BindAxis(TEXT("Forward"), this, &AVRShooterCharacter::MoveForward);
+	
 	PlayerInputComponent->BindAxis(TEXT("Right"), this, &AVRShooterCharacter::MoveRight);
+	
 	PlayerInputComponent->BindAction(TEXT("Teleport"), IE_Released, this, &AVRShooterCharacter::BeginTeleport);
+	
 	PlayerInputComponent->BindAction(TEXT("GripLeft"), IE_Pressed, this, &AVRShooterCharacter::GripLeft);
 	PlayerInputComponent->BindAction(TEXT("GripLeft"), IE_Released, this, &AVRShooterCharacter::ReleaseLeft);
+	
 	PlayerInputComponent->BindAction(TEXT("GripRight"), IE_Pressed, this, &AVRShooterCharacter::GripRight);
 	PlayerInputComponent->BindAction(TEXT("GripRight"), IE_Released, this, &AVRShooterCharacter::ReleaseRight);
+	
 	PlayerInputComponent->BindAction(TEXT("FireButton"), IE_Pressed, this, &AVRShooterCharacter::FireButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("FireButton"), IE_Released, this, &AVRShooterCharacter::FireButtonReleased);
-	PlayerInputComponent->BindAction(TEXT("AimingButton"), IE_Pressed, this, &AVRShooterCharacter::AimingButtonPressed);
-	PlayerInputComponent->BindAction(TEXT("AimingButton"), IE_Released, this, &AVRShooterCharacter::AimingButtonReleased);
+	
+	PlayerInputComponent->BindAction(TEXT("Reload"), IE_Pressed, this, &AVRShooterCharacter::ReloadButtonPressed);
+	
 	PlayerInputComponent->BindAction(TEXT("Select"), IE_Pressed, this, &AVRShooterCharacter::SelectButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Select"), IE_Released, this, &AVRShooterCharacter::SelectButtonReleased);
 }
@@ -474,17 +504,21 @@ void AVRShooterCharacter::FireButtonReleased()
 	}
 }
 
-void AVRShooterCharacter::AimingButtonPressed()
+void AVRShooterCharacter::ReloadButtonPressed()
 {
-}
-
-void AVRShooterCharacter::AimingButtonReleased()
-{
+	if (Combat)
+	{
+		// We have no ReloadMontage, simply call FinishReloading()
+		Combat->ReloadWeapon();
+		//Combat->FinishReloading();
+	}
 }
 
 void AVRShooterCharacter::SelectButtonPressed()
 {
-	if (Combat && TraceHitItem)
+	if (Combat && 
+		TraceHitItem &&
+		TraceHitItem != Combat->EquippedWeapon)
 	{
 		TraceHitItem->StartItemCurve(this);
 	}

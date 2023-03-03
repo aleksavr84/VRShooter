@@ -26,34 +26,39 @@ void AWeapon::Tick(float DeltaTime)
 
 void AWeapon::ThrowWeapon()
 {
-	//FRotator MeshRotation{ 0.f, GetItemMesh()->GetComponentRotation().Yaw, 0.f };
-	//GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
 
-	//const FVector MeshForward{ GetItemMesh()->GetForwardVector() };
-	//const FVector MeshRight{ GetItemMesh()->GetRightVector() };
-	//
-	//// Direction in which we throw the Weapon
-	//FVector ImpulseDirection = MeshRight.RotateAngleAxis(-20.f, MeshForward);
+	FRotator MeshRotation{ 0.f, GetItemMesh()->GetComponentRotation().Yaw, 0.f };
+	GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
 
-	//float RandomRotation{ FMath::FRandRange(10.f, 30.f) };
-	//ImpulseDirection = ImpulseDirection.RotateAngleAxis(RandomRotation, FVector(0.f, 0.f, 1.f));
-	//ImpulseDirection *= 20'000.f;
-	//GetItemMesh()->AddImpulse(ImpulseDirection);
+	const FVector MeshForward{ GetItemMesh()->GetForwardVector() };
+	const FVector MeshRight{ GetItemMesh()->GetRightVector() };
+	
+	// Direction in which we throw the Weapon
+	FVector ImpulseDirection = MeshRight.RotateAngleAxis(-20.f, MeshForward);
 
+	float RandomRotation{ FMath::FRandRange(10.f, 30.f) };
+	ImpulseDirection = ImpulseDirection.RotateAngleAxis(RandomRotation, FVector(0.f, 0.f, 1.f));
+	ImpulseDirection *= 20'000.f;
+	
 	bFalling = true;
+	
+	GetItemMesh()->AddImpulse(ImpulseDirection);
 
-	GetWorldTimerManager().SetTimer(ThrowWeaponTimer, this, &AWeapon::StopFalling, ThrowWeaponTime);
+	GetWorldTimerManager().SetTimer(
+		ThrowWeaponTimer, 
+		this, 
+		&AWeapon::StopFalling, 
+		ThrowWeaponTime);
 }
 
 void AWeapon::StopFalling()
 {
-	bFalling = false;
-
 	FRotator MeshRotation{ 0.f, GetItemMesh()->GetComponentRotation().Yaw, 0.f };
 	SetActorRotation(FQuat(FRotator(0.f, 0.f, 0.f)));
 	GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
 
 	SetItemState(EItemState::EIS_Pickup);
+	bFalling = false;
 }
 
 void AWeapon::Fire()
@@ -87,6 +92,14 @@ void AWeapon::Fire()
 	}
 }
 
+void AWeapon::Reload()
+{
+	if (ReloadAnimation)
+	{
+		GetItemMesh()->PlayAnimation(ReloadAnimation, false);
+	}
+}
+
 void AWeapon::DecrementAmmo()
 {
 	if (Ammo - 1 <= 0)
@@ -97,4 +110,10 @@ void AWeapon::DecrementAmmo()
 	{
 		--Ammo;
 	}
+}
+
+void AWeapon::ReloadAmmo(int32 Amount)
+{
+	checkf(Ammo + Amount <= MagazineCapacity, TEXT("Attemted to reload with more than magazine capacity"));
+	Ammo += Amount;
 }

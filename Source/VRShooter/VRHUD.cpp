@@ -26,11 +26,7 @@ void AVRHUD::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0);
-	//PlayerController
-
 	UpdateHUDLocationAndRotation();
-	
 }
 
 void AVRHUD::UpdateHUDLocationAndRotation()

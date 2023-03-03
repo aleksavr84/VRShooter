@@ -52,6 +52,12 @@ void AItem::Tick(float DeltaTime)
 	{
 		ItemMesh->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
 	}
+
+	//// TODO: This is only a Temporary Solution -> The pickup Widget doesn't hide after the player not looking at the Item
+	if (PickupWidget)
+	{
+		PickupWidget->SetVisibility(false);
+	}
 }
 
 void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
@@ -76,6 +82,21 @@ void AItem::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor*
 		if (VRShooterCharacter)
 		{
 			VRShooterCharacter->IncrementOverlappedItemCount(-1);
+		}
+	}
+}
+
+void AItem::ShowPickupWidget(bool Visible)
+{
+	if (PickupWidget)
+	{
+		if (ItemState == EItemState::EIS_Pickup)
+		{
+			PickupWidget->SetVisibility(Visible);
+		}
+		else
+		{
+			PickupWidget->SetVisibility(false);
 		}
 	}
 }
@@ -129,8 +150,7 @@ void AItem::SetItemProperties(EItemState State)
 	switch (State)
 	{
 	case EItemState::EIS_Pickup:
-		//PickupWidget->SetVisibility(true);
-
+		PickupWidget->SetVisibility(false);
 		// Set Mesh properties
 		ItemMesh->SetSimulatePhysics(false);
 		ItemMesh->SetEnableGravity(false);
@@ -150,7 +170,6 @@ void AItem::SetItemProperties(EItemState State)
 
 	case EItemState::EIS_Equipped:
 		PickupWidget->SetVisibility(false);
-
 		// Set Mesh properties
 		ItemMesh->SetSimulatePhysics(false);
 		ItemMesh->SetEnableGravity(false);
@@ -169,7 +188,6 @@ void AItem::SetItemProperties(EItemState State)
 
 	case EItemState::EIS_Falling:
 		PickupWidget->SetVisibility(false);
-
 		// Set Mesh properties
 		ItemMesh->SetSimulatePhysics(true);
 		ItemMesh->SetEnableGravity(true);
@@ -189,7 +207,6 @@ void AItem::SetItemProperties(EItemState State)
 
 	case EItemState::EIS_EquipInterping:
 		PickupWidget->SetVisibility(false);
-
 		// Set Mesh properties
 		ItemMesh->SetSimulatePhysics(false);
 		ItemMesh->SetEnableGravity(false);

@@ -150,7 +150,7 @@ private:
 	UCurveFloat* ItemScaleCurve;
 
 public:
-	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidget; }
+	FORCEINLINE UWidgetComponent* GetPickupWidget() { return PickupWidget; }
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
 	FORCEINLINE UBoxComponent* GetCollisionBox() const { return CollisionBox; }
 	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
@@ -159,4 +159,6 @@ public:
 
 	// Called from the AVRShooter class
 	void StartItemCurve(AVRShooterCharacter* Character);
+
+	void ShowPickupWidget(bool Visible);
 };

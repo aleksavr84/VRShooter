@@ -2,16 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "AmmoType.h"
 #include "CombatComponent.generated.h"
-
-UENUM(BlueprintType)
-enum class EAmmoType : uint8
-{
-	EAT_9mm UMETA(DisplayName = "9mm"),
-	EAT_AR UMETA(DisplayName = "AssaultRifle"),
-
-	EAT_MAX UMETA(DisplayName = "DefaultMAX")
-};
 
 UENUM(BlueprintType)
 enum class ECombatState : uint8
@@ -49,6 +41,7 @@ protected:
 	void SendBullet();
 	void PlayGunFireMontage();
 	void PlayHapticEffect();
+	void ReloadWeapon();
 
 	// Line trace for Items under the crosshairs
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult);
@@ -63,14 +56,23 @@ protected:
 	void InitializeAmmoMap();
 	// Check to make sure our waepon has ammo
 	bool WeaponHasAmmo();
+	// Checks to see if we have ammo of the EquippedWeapon Ammo Type
+	bool CarryingAmmo();
+	// Called from Animation Blueprint with GrabClip notify
+	UFUNCTION(BlueprintCallable)
+	void GrabClip();
+	// Called from Animation Blueprint with RelaseClip notify
+	UFUNCTION(BlueprintCallable)
+	void ReleaseClip();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	AWeapon* EquippedWeapon;
 
 private:
 	UPROPERTY()
 	class AVRShooterCharacter* Character;
 
 	// Weapon
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	AWeapon* EquippedWeapon;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
@@ -102,6 +104,21 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	int32 StartingARAmmo = 120;
 
+	// Montage for reload Animations
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* ReloadMontage;
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
+
+	// Transform of the clip when we first grab the clip during reloading
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FTransform ClipTransform;
+
+	// Scene compoent to attach to the Character~s hand during reloading
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* HandSceneComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
@@ -116,6 +133,14 @@ private:
 	float AutomaticFireRate = 0.25f;
 	FTimerHandle AutoFireTimer;
 	
+	// Reload without ReloadMontage
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float WeaponReloadAnimLength = 1.73f;
+
+	FTimerHandle WeaponReloadTimer;
+	void WeaponReloadAnimStart();
+	void WeaponReloadAnimFinished();
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
 	ECombatState CombatState  = ECombatState::ECS_Unoccupied;
 
