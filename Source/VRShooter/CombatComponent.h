@@ -65,6 +65,9 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void ReleaseClip();
 
+	// Pickup
+	void PickupAmmo(class AAmmo* Ammo);
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	AWeapon* EquippedWeapon;
 

@@ -16,6 +16,8 @@
 #include "Components/WidgetComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "VRHUD.h"
+#include "Sound/SoundCue.h"
+#include "Ammo.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
 {
@@ -43,6 +45,30 @@ AVRShooterCharacter::AVRShooterCharacter()
 	PostProcessComponent->SetupAttachment(GetRootComponent());
 
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+
+	// Create interpolation components
+	WeaponInterpComp = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponInterpolationComponent"));
+	WeaponInterpComp->SetupAttachment(Camera);
+
+	InterpComp1 = CreateDefaultSubobject<USceneComponent>(TEXT("InterpolationComponent1"));
+	InterpComp1->SetupAttachment(Camera);
+
+	InterpComp2 = CreateDefaultSubobject<USceneComponent>(TEXT("InterpolationComponent2"));
+	InterpComp2->SetupAttachment(Camera);
+
+	InterpComp3 = CreateDefaultSubobject<USceneComponent>(TEXT("InterpolationComponent3"));
+	InterpComp3->SetupAttachment(Camera);
+
+	InterpComp4 = CreateDefaultSubobject<USceneComponent>(TEXT("InterpolationComponent4"));
+	InterpComp4->SetupAttachment(Camera);
+
+	InterpComp5 = CreateDefaultSubobject<USceneComponent>(TEXT("InterpolationComponent5"));
+	InterpComp5->SetupAttachment(Camera);
+
+	InterpComp6 = CreateDefaultSubobject<USceneComponent>(TEXT("InterpolationComponent6"));
+	InterpComp6->SetupAttachment(Camera);
+
+
 }
 
 void AVRShooterCharacter::PostInitializeComponents() 
@@ -107,6 +133,9 @@ void AVRShooterCharacter::BeginPlay()
 		Combat->InitializeAmmoMap();
 		Combat->EquipWeapon(Combat->SpawnDefaultWeapon());
 	}
+
+	// Create FInterpLocation structs for each interp location. Add  to array
+	InitializeInterpLocations();
 }
 
 void AVRShooterCharacter::Tick(float DeltaTime)
@@ -124,6 +153,57 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 	//UpdateBlinkers();
 
 	TraceForItems();
+}
+
+void AVRShooterCharacter::InitializeInterpLocations()
+{
+	FInterpLocation WeaponLocation{ WeaponInterpComp, 0 };
+	InterpLocations.Add(WeaponLocation);
+
+	FInterpLocation InterpLoc1{ InterpComp1, 0 };
+	InterpLocations.Add(InterpLoc1);
+
+	FInterpLocation InterpLoc2{ InterpComp2, 0 };
+	InterpLocations.Add(InterpLoc2);
+
+	FInterpLocation InterpLoc3{ InterpComp3, 0 };
+	InterpLocations.Add(InterpLoc3);
+
+	FInterpLocation InterpLoc4{ InterpComp4, 0 };
+	InterpLocations.Add(InterpLoc4);
+
+	FInterpLocation InterpLoc5{ InterpComp5, 0 };
+	InterpLocations.Add(InterpLoc5);
+
+	FInterpLocation InterpLoc6{ InterpComp6, 0 };
+	InterpLocations.Add(InterpLoc6);
+}
+
+int32 AVRShooterCharacter::GetInterpLocationIndex()
+{
+	int32 LowestIndex = 1;
+	int32 LowestCount = INT_MAX;
+
+	for (int32 i = 1; i < InterpLocations.Num(); i++)
+	{
+		if (InterpLocations[i].ItemCount < LowestCount)
+		{
+			LowestIndex = i;
+			LowestCount = InterpLocations[i].ItemCount;
+		}
+	}
+
+	return LowestIndex;
+}
+
+void AVRShooterCharacter::IncrementInterpLocItemCount(int32 Index, int32 Amount)
+{
+	if (Amount < -1 || Amount > 1) return;
+
+	if (InterpLocations.Num() >= Index)
+	{
+		InterpLocations[Index].ItemCount += Amount;
+	}
 }
 
 void AVRShooterCharacter::ShowWeaponHUD()
@@ -386,22 +466,38 @@ void AVRShooterCharacter::TraceForItems()
 	}
 }
 
-FVector AVRShooterCharacter::GetCameraInterpLocation()
+FInterpLocation AVRShooterCharacter::GetInterpLoctaion(int32 Index)
 {
-	const FVector CameraWorldLocation{ Camera->GetComponentLocation() };
-	const FVector CameraForward{ Camera->GetForwardVector() };
-	const FVector CameraUp{ Camera->GetUpVector() };
+	if (Index <= InterpLocations.Num())
+	{
+		return InterpLocations[Index];
+	}
 
-	// Desired = CameraWorldLocation + Forward * A + Up * B
-	return CameraWorldLocation + 
-		CameraForward * 
-		CameraInterpDistance + 
-		CameraUp * 
-		CameraInterpElevation;
+	return FInterpLocation();
 }
+
+// No longer needed; AItem has GetInterpLocation
+//FVector AVRShooterCharacter::GetCameraInterpLocation()
+//{
+//	const FVector CameraWorldLocation{ Camera->GetComponentLocation() };
+//	const FVector CameraForward{ Camera->GetForwardVector() };
+//	const FVector CameraUp{ Camera->GetUpVector() };
+//
+//	// Desired = CameraWorldLocation + Forward * A + Up * B
+//	return CameraWorldLocation + 
+//		CameraForward * 
+//		CameraInterpDistance + 
+//		CameraUp * 
+//		CameraInterpElevation;
+//}
 
 void AVRShooterCharacter::GetPickupItem(AItem* Item)
 {
+	if (Item->GetEquipSound())
+	{
+		Item->PlayEquipSound();
+	}
+
 	auto Weapon = Cast<AWeapon>(Item);
 
 	if (Weapon && 
@@ -410,6 +506,48 @@ void AVRShooterCharacter::GetPickupItem(AItem* Item)
 	{
 		Combat->SwapWeapon(Weapon);
 	}
+
+	auto Ammo = Cast<AAmmo>(Item);
+
+	if (Ammo &&
+		Combat)
+	{
+		Combat->PickupAmmo(Ammo);
+	}
+}
+
+void AVRShooterCharacter::StartPickupSoundTimer()
+{
+	bShouldPlayPickupSound = false;
+
+	GetWorldTimerManager().SetTimer(
+		PickupSoundTimer, 
+		this, 
+		&AVRShooterCharacter::ResetPickupSoundTimer,
+		PickupSoundResetTime
+	);
+}
+
+void AVRShooterCharacter::ResetPickupSoundTimer()
+{
+	bShouldPlayPickupSound = true;
+}
+
+void AVRShooterCharacter::StartEquipSoundTimer()
+{
+	bShouldPlayEquipSound = false;
+
+	GetWorldTimerManager().SetTimer(
+		EquipSoundTimer,
+		this,
+		&AVRShooterCharacter::ResetEquipSoundTimer,
+		EquipSoundResetTime
+	);
+}
+
+void AVRShooterCharacter::ResetEquipSoundTimer()
+{
+	bShouldPlayEquipSound = true;
 }
 
 void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

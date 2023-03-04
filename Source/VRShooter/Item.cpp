@@ -4,6 +4,8 @@
 #include "Components/SphereComponent.h"
 #include "VRShooterCharacter.h"
 #include "Camera/CameraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundCue.h"
 
 AItem::AItem()
 {
@@ -236,6 +238,25 @@ void AItem::RotateWidgetToPlayer(FVector PlayerLocation)
 	}
 }
 
+FVector AItem::GetInterpLocation()
+{
+	if (ShooterCharacter == nullptr) return FVector(0.f);
+
+	switch (ItemType)
+	{
+	case EItemType::EIT_Ammo:
+		return ShooterCharacter->GetInterpLoctaion(InterpLocIndex).SceneComponent->GetComponentLocation();
+		
+		break;
+	case EItemType::EIT_Weapon:
+		return ShooterCharacter->GetInterpLoctaion(0).SceneComponent->GetComponentLocation();
+		
+		break;
+	}
+
+	return FVector();
+}
+
 void AItem::ItemInterp(float DeltaTime)
 {
 	if (!bInterping) return;
@@ -249,7 +270,8 @@ void AItem::ItemInterp(float DeltaTime)
 		// Get the item's initial location when the curve started
 		FVector ItemLocation = ItemInterpStartLocation;
 		// Get location in the front of the camera
-		const FVector CameraInterpLocation{ ShooterCharacter->GetCameraInterpLocation() };
+		//const FVector CameraInterpLocation{ ShooterCharacter->GetCameraInterpLocation() };
+		const FVector CameraInterpLocation{ GetInterpLocation() };
 		// Vector from item to CameraInterpLocation (X and Y are zeroed out)
 		const FVector ItemToCamera{ FVector(0.f, 0.f, (CameraInterpLocation - ItemLocation).Z) };
 		// Scale factor to multiply with CurveValue
@@ -291,7 +313,6 @@ void AItem::ItemInterp(float DeltaTime)
 			SetActorScale3D(FVector(ScaleCurveValue, ScaleCurveValue, ScaleCurveValue));
 		}
 	}
-
 }
 
 void AItem::StartItemCurve(AVRShooterCharacter* Character)
@@ -300,6 +321,13 @@ void AItem::StartItemCurve(AVRShooterCharacter* Character)
 	{
 		// Store a handle to the character
 		ShooterCharacter = Character;
+
+		// Get array index in InterpLocations with the lowest item count
+		InterpLocIndex = ShooterCharacter->GetInterpLocationIndex();
+		// Add 1 to the Item Count for this interp location struct
+		ShooterCharacter->IncrementInterpLocItemCount(InterpLocIndex, 1);
+
+		PlayPickupSound();
 
 		// Store initial location of the item
 		ItemInterpStartLocation = GetActorLocation();
@@ -322,12 +350,48 @@ void AItem::StartItemCurve(AVRShooterCharacter* Character)
 	}
 }
 
+void AItem::PlayPickupSound()
+{
+	if (ShooterCharacter &&
+		ShooterCharacter->ShouldPlayPickupSound())
+	{
+		ShooterCharacter->StartPickupSoundTimer();
+
+		if (PickupSound)
+		{
+			UGameplayStatics::PlaySound2D(
+				this,
+				PickupSound
+			);
+		}
+	}
+}
+
+void AItem::PlayEquipSound()
+{
+	if (ShooterCharacter &&
+		ShooterCharacter->ShouldPlayEquipSound())
+	{
+		ShooterCharacter->StartEquipSoundTimer();
+
+		if (EquipSound)
+		{
+			UGameplayStatics::PlaySound2D(
+				this,
+				EquipSound
+			);
+		}
+	}
+}
+
 void AItem::FinishInterping()
 {
 	bInterping = false;
 
 	if (ShooterCharacter)
 	{
+		// Subtract 1 from the ItemCount of the interp location struct
+		ShooterCharacter->IncrementInterpLocItemCount(InterpLocIndex, -1);
 		ShooterCharacter->GetPickupItem(this);
 	}
 

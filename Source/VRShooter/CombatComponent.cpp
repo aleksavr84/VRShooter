@@ -10,6 +10,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/SphereComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Ammo.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -93,6 +94,35 @@ void UCombatComponent::InitializeAmmoMap()
 {
 	AmmoMap.Add(EAmmoType::EAT_9mm, Starting9mmAmmo);
 	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
+}
+
+void UCombatComponent::PickupAmmo(AAmmo* Ammo)
+{
+	
+	if (EquippedWeapon)
+	{
+		// Check to see if AmmoMap contains Ammo's AmmoType
+		if (AmmoMap.Find(Ammo->GetAmmoType()))
+		{
+			// Get amount of ammo in our AmmoMap for Ammo's type
+			int32 AmmoCount{ AmmoMap[Ammo->GetAmmoType()] };
+			AmmoCount += Ammo->GetItemCount();
+			// Set the amount of ammo in the Map for this type
+			AmmoMap[Ammo->GetAmmoType()] = AmmoCount;
+		}
+
+		if (EquippedWeapon->GetAmmoType() == Ammo->GetAmmoType())
+		{
+			// Check to see if the gun is empty
+			if (EquippedWeapon->GetAmmo() == 0)
+			{
+				ReloadWeapon();
+			}
+		}
+
+		Ammo->Destroy();
+	
+	}
 }
 
 void UCombatComponent::FireButtonPressed()
@@ -408,7 +438,7 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 		const FVector Start{ Character->GetCameraComponent()->GetComponentLocation() };
 		const FVector End{ Start + Character->GetCameraComponent()->GetForwardVector() * 50'000.f};
 
-		DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
+		//DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
 
 		GetWorld()->LineTraceSingleByChannel(
 			OutHitResult,
