@@ -3,7 +3,92 @@
 #include "CoreMinimal.h"
 #include "Item.h"
 #include "AmmoType.h"
+#include "Engine/DataTable.h"
 #include "Weapon.generated.h"
+
+USTRUCT(BlueprintType)
+struct FWeaponDataTable : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EAmmoType AmmoType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 WeaponAmmo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MagazingCapacity;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class USoundCue* PickupSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundCue* EquipSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USkeletalMesh* ItemMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString ItemName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* InventoryIcon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* AmmoIcon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UMaterialInstance* MaterialInstance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MaterialIndex;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ClipBoneName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName ReloadMontageSection;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UAnimInstance> AnimBP;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairsMiddle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairsLeft;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairsRight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairsBottom;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* CrosshairsTop;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float AutoFireRate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	class UParticleSystem* MuzzleFlash;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundCue* FireSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName BoneToHide;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bAutomatic;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Damage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float HeadShotDamage;
+};
 
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
@@ -63,6 +148,14 @@ private:
 	float ThrowWeaponTime;
 	bool bFalling;
 
+	// Amount of damage caused by a bullet
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float Damage = 10.f;
+
+	// Amount of damage when a bullet hits the head
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float HeadShotDamage = 30.f;
+
 public:
 	// Adds an impulse to the Weapon
 	void ThrowWeapon();
@@ -80,6 +173,8 @@ public:
 	FORCEINLINE int32 GetMagazineCapacity() const { return MagazineCapacity; }
 	FORCEINLINE FName GetClipBoneName() const { return ClipBoneName; }
 	FORCEINLINE void SetMovingClip(bool Move) { bMovingClip = Move; }
+	FORCEINLINE float GetDamage() const { return Damage; }
+	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; }
 
 	void ReloadAmmo(int32 Amount);
 	

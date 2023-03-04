@@ -11,6 +11,8 @@
 #include "Components/SphereComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Ammo.h"
+#include "BulletHitInterface.h"
+#include "Enemy.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -204,13 +206,56 @@ void UCombatComponent::SendBullet()
 
 				BeamEndPoint = FireHit.Location;
 
-				if (ImpactParticles)
+				// Does hit Actor implement BulletHitInterface?
+				if (FireHit.GetActor())
 				{
-					UGameplayStatics::SpawnEmitterAtLocation(
-						GetWorld(),
-						ImpactParticles,
-						FireHit.Location
-					);
+					IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(FireHit.GetActor());
+				
+					if (BulletHitInterface)
+					{
+						BulletHitInterface->BulletHit_Implementation(FireHit, Character);
+					}
+
+					AEnemy* HitEnemy = Cast<AEnemy>(FireHit.GetActor());
+
+					if (HitEnemy)
+					{
+						if (FireHit.BoneName.ToString() == HitEnemy->GetHeadBone())
+						{
+							// Head shot
+							UGameplayStatics::ApplyDamage(
+								FireHit.GetActor(),
+								EquippedWeapon->GetHeadShotDamage(),
+								Character->GetController(),
+								Character,
+								UDamageType::StaticClass()
+							);
+						}
+						else
+						{
+							// Body shot
+							UGameplayStatics::ApplyDamage(
+								FireHit.GetActor(),
+								EquippedWeapon->GetDamage(),
+								Character->GetController(),
+								Character,
+								UDamageType::StaticClass()
+							);
+						}
+					}
+
+				}
+				else
+				{
+					// Spawn default particles
+					if (ImpactParticles)
+					{
+						UGameplayStatics::SpawnEmitterAtLocation(
+							GetWorld(),
+							ImpactParticles,
+							FireHit.Location
+						);
+					}
 				}
 			}
 
