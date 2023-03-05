@@ -14,11 +14,16 @@ public:
 	AEnemy();
 
 private:
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
-	//class USphereComponent* AreaSphere;
+	// OverlapShpere for when the enemy becomes hostile
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	class USphereComponent* AgroSphere;
+
+	// Sphere for CombatRange
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	class USphereComponent* CombatRangeSphere;
 
 	// HealthBar
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* HealthBar;
 
 	void RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocation);
@@ -32,12 +37,22 @@ protected:
 	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
 	void ResetHitReactTimer();
 
+	UFUNCTION(BlueprintCallable)
+	void PlayAttackMontage(FName Section, float PlayRate = 1.0f);
+
+	UFUNCTION(BlueprintPure)
+	FName GetAttackSectionName();
+
+	UFUNCTION(BlueprintCallable)
+	void SetStunned(bool Stunned);
+
 private:
 	void ShowHealthBar();
 	void HideHealthBar();
 	
-	/*UFUNCTION()
-	void OnSphereOverlap(
+	// Called when something overlaps with the agro sphere
+	UFUNCTION()
+	void OnAgroSphereOverlap(
 		UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,
@@ -47,12 +62,22 @@ private:
 	);
 
 	UFUNCTION()
-	void OnSphereEndOverlap(
+	void OnCombatRangeSphereOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bfromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION()
+	void OnCombatRangeSphereEndOverlap(
 		UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex
-	);*/
+	);
 
 	// Particles to spawn when hit by bullets
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -84,6 +109,23 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* HitMontage;
 
+	// Montage containing different Attacks
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* AttackMontage;
+
+	// Montage section names
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName AttackLFast = TEXT("AttackLFast");
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName AttackRFast = TEXT("AttackRFast");
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName AttackRSword = TEXT("AttackRSword");
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName AttackLSword = TEXT("AttackLSword");
+
 	FTimerHandle HitReactTimer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -109,6 +151,32 @@ private:
 	UFUNCTION()
 	void DestroyHitNumber(AWidgetActor* HitNumber);
 
+	// Behavior tree for the AI Character
+	UPROPERTY(EditAnywhere, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	class UBehaviorTree* BehaviorTree;
+
+	// Point for the enemy to move to
+	UPROPERTY(EditAnywhere, Category = Initialization, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
+	FVector PatrolPoint;
+
+	// Second Point for the enemy to move to
+	UPROPERTY(EditAnywhere, Category = Initialization, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
+	FVector PatrolPoint2;
+
+	class AEnemyController* EnemyController;
+
+	// True when playing the get hit animation
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
+	bool bStunned = false;
+
+	// Chance of being stunned. 0: no stun chance, 1: 100% stun chance 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	float StunChance = .5f;
+
+	// True when in attack range -> Time to Attack!!!
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
+	bool bInAttackRange = false;
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -118,4 +186,5 @@ public:
 	void ShowHitNumber(class AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot);
 
 	FORCEINLINE FString GetHeadBone() const { return HeadBone; }
+	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
 };

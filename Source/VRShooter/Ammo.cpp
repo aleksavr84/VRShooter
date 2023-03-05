@@ -1,7 +1,7 @@
+#include "Ammo.h"
 #include "Components/BoxComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/SphereComponent.h"
-#include "Ammo.h"
 #include "VRShooterCharacter.h"
 
 AAmmo::AAmmo()

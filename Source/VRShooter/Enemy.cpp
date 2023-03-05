@@ -1,5 +1,6 @@
 #include "Enemy.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Sound/SoundCue.h"
 #include "Components/SphereComponent.h"
 #include "Particles/ParticleSystemComponent.h"
@@ -7,6 +8,10 @@
 #include "WidgetActor.h"
 #include "Components/WidgetComponent.h"
 #include "Blueprint/UserWidget.h"
+#include "DrawDebugHelpers.h"
+#include "EnemyController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Components/CapsuleComponent.h"
 
 AEnemy::AEnemy()
 {
@@ -16,18 +21,84 @@ AEnemy::AEnemy()
 	HealthBar->SetupAttachment(GetRootComponent());
 	HealthBar->SetVisibility(false);
 
-	//AreaSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AreaSphere"));
-	//AreaSphere->SetupAttachment(GetRootComponent());
+	AgroSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AgroSphere"));
+	AgroSphere->SetupAttachment(GetRootComponent());
+
+	CombatRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CombatRangeSphere"));
+	CombatRangeSphere->SetupAttachment(GetRootComponent());
 }
 
 void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnSphereOverlap);
-	//AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AEnemy::OnSphereEndOverlap);
+	AgroSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnAgroSphereOverlap);
+	
+	CombatRangeSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnCombatRangeSphereOverlap);
+	CombatRangeSphere->OnComponentEndOverlap.AddDynamic(this, &AEnemy::OnCombatRangeSphereEndOverlap);
+	
+	GetMesh()->SetCollisionResponseToChannel(
+		ECollisionChannel::ECC_Visibility, 
+		ECollisionResponse::ECR_Block
+	);
 
-	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(
+		ECollisionChannel::ECC_Camera, 
+		ECollisionResponse::ECR_Ignore
+	);
+
+	GetCapsuleComponent()->SetCollisionResponseToChannel(
+		ECollisionChannel::ECC_Camera,
+		ECollisionResponse::ECR_Ignore
+	);
+
+
+	// Get the AIController
+	EnemyController = Cast<AEnemyController>(GetController());
+
+	// Converting PatrolPoint from LocalSpace to WorldSpace
+	const FVector WorldPatrolPoint = UKismetMathLibrary::TransformLocation(
+		GetActorTransform(), 
+		PatrolPoint
+	);
+
+	DrawDebugSphere(
+		GetWorld(),
+		WorldPatrolPoint,
+		25.f,
+		12,
+		FColor::Red,
+		true
+	);
+
+	const FVector WorldPatrolPoint2 = UKismetMathLibrary::TransformLocation(
+		GetActorTransform(),
+		PatrolPoint2
+	);
+
+	DrawDebugSphere(
+		GetWorld(),
+		PatrolPoint2,
+		25.f,
+		12,
+		FColor::Red,
+		true
+	);
+
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsVector(
+			TEXT("PatrolPoint"),
+			WorldPatrolPoint
+		);
+
+		EnemyController->GetBlackboardComponent()->SetValueAsVector(
+			TEXT("PatrolPoint2"),
+			WorldPatrolPoint2
+		);
+
+		EnemyController->RunBehaviorTree(BehaviorTree);
+	}
 }
 
 	void AEnemy::Tick(float DeltaTime)
@@ -49,33 +120,111 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 }
 
-//void AEnemy::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
-//{
-//	if (OtherActor)
-//	{
-//		VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
-//
-//		if (VRShooterCharacter)
-//		{
-//			HealthBar->SetVisibility(true);
-//			bShouldRotateTheHealthBar = true;
-//		}
-//	}
-//}
-//
-//void AEnemy::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-//{
-//	if (OtherActor)
-//	{
-//		VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
-//
-//		if (VRShooterCharacter)
-//		{
-//			HealthBar->SetVisibility(false);
-//			bShouldRotateTheHealthBar = false;
-//		}
-//	}
-//}
+void AEnemy::OnAgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor)
+	{
+		auto Character = Cast<AVRShooterCharacter>(OtherActor);
+
+		UE_LOG(LogTemp, Warning, TEXT("OnAgroSphereOverlap"));
+
+		if (Character &&
+			EnemyController)
+		{
+			// Set the value of the TargetBlackboardKey
+			EnemyController->GetBlackboardComponent()->SetValueAsObject(
+				TEXT("Target"), 
+				Character
+			);
+		}
+	}
+}
+
+void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor == nullptr) return;
+
+	auto ShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+
+	UE_LOG(LogTemp, Warning, TEXT("OnCombatRangeSphereOverlap"));
+
+	if (ShooterCharacter)
+	{
+		bInAttackRange = true;
+
+		UE_LOG(LogTemp, Warning, TEXT("OnCombatRangeSphereOverlap-ShooterCharacter"));
+
+		if (EnemyController)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("OnCombatRangeSphereOverlap-EnemyController"));
+			EnemyController->GetBlackboardComponent()->SetValueAsBool(
+				TEXT("InAttackRange"), 
+				true
+			);
+		}
+	}
+}
+
+void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	if (AnimInstance &&
+		AttackMontage)
+	{
+		AnimInstance->Montage_Play(AttackMontage, PlayRate);
+		AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+	}
+}
+
+FName AEnemy::GetAttackSectionName()
+{
+	const int32 Section{ FMath::RandRange(1, 4) };
+	FName SectionName;
+
+	switch (Section)
+	{
+	case 1:
+		SectionName = AttackLFast;
+		
+		break;
+	case 2:
+		SectionName = AttackRFast;
+		
+		break;
+	case 3:
+		SectionName = AttackLSword;
+		
+		break;
+	case 4:
+		SectionName = AttackRSword;
+		
+		break;
+	}
+
+	return SectionName;
+}
+
+
+void AEnemy::OnCombatRangeSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (OtherActor == nullptr) return;
+
+	auto ShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+
+	if (ShooterCharacter)
+	{
+		bInAttackRange = false;
+
+		if (EnemyController)
+		{
+			EnemyController->GetBlackboardComponent()->SetValueAsBool(
+				TEXT("InAttackRange"), 
+				false
+			);
+		}
+	}
+}
 
 void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter* CauserCharacter)
 {
@@ -102,7 +251,29 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter*
 	}
 
 	ShowHealthBar();
-	PlayHitMontage(FName("HitReactFront"));
+	
+	// Determine whether bullet hit stunns
+	const float Stunned = FMath::FRandRange(0.f, 1.f);
+
+	if (Stunned <= StunChance)
+	{
+		// Stun the Enemy
+		PlayHitMontage(FName("HitReactFront"));
+		SetStunned(true);
+	}	
+}
+
+void AEnemy::SetStunned(bool Stunned)
+{
+	bStunned = Stunned;
+
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(
+			TEXT("Stunned"), 
+			Stunned
+		);
+	}
 }
 
 void AEnemy::ShowHitNumber(AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot)
