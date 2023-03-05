@@ -220,27 +220,39 @@ void UCombatComponent::SendBullet()
 
 					if (HitEnemy)
 					{
+						int32 Damage{};
+
 						if (FireHit.BoneName.ToString() == HitEnemy->GetHeadBone())
 						{
 							// Head shot
+							Damage = EquippedWeapon->GetHeadShotDamage();
+
 							UGameplayStatics::ApplyDamage(
 								FireHit.GetActor(),
-								EquippedWeapon->GetHeadShotDamage(),
+								Damage,
 								Character->GetController(),
 								Character,
 								UDamageType::StaticClass()
 							);
+
+							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
+
 						}
 						else
 						{
 							// Body shot
+							Damage = EquippedWeapon->GetDamage();
+
 							UGameplayStatics::ApplyDamage(
 								FireHit.GetActor(),
-								EquippedWeapon->GetDamage(),
+								Damage,
 								Character->GetController(),
 								Character,
 								UDamageType::StaticClass()
 							);
+
+							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
+
 						}
 					}
 

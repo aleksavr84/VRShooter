@@ -2,9 +2,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
 #include "Components/SphereComponent.h"
-#include "Components/WidgetComponent.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "VRShooterCharacter.h"
+#include "WidgetActor.h"
+#include "Components/WidgetComponent.h"
+#include "Blueprint/UserWidget.h"
 
 AEnemy::AEnemy()
 {
@@ -28,7 +30,7 @@ void AEnemy::BeginPlay()
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 }
 
-void AEnemy::Tick(float DeltaTime)
+	void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
@@ -36,7 +38,7 @@ void AEnemy::Tick(float DeltaTime)
 	{
 		if (VRShooterCharacter)
 		{
-			RotateHealthBarToPlayer(VRShooterCharacter->GetActorLocation());
+			RotateWidgetToPlayer(HealthBar, VRShooterCharacter->GetActorLocation());
 		}
 	}
 }
@@ -77,7 +79,6 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter* CauserCharacter)
 {
-	
 	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(CauserCharacter) : VRShooterCharacter;
 
 	if (ImpactSound)
@@ -100,22 +101,82 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter*
 		);
 	}
 
-	ShowHealhBar();
+	ShowHealthBar();
 	PlayHitMontage(FName("HitReactFront"));
+}
+
+void AEnemy::ShowHitNumber(AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot)
+{
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+	UWorld* World = GetWorld();
+
+	if (World)
+	{
+		AWidgetActor* HitNumberWidgetActor = World->SpawnActor<AWidgetActor>(
+			WidgetActorClass,
+			HitLocation,
+			GetActorRotation(),
+			SpawnParams
+			);
+
+		if (HitNumberWidgetActor &&
+			Causer)
+		{
+			HitNumberWidgetActor->SetShooterCharacter(Causer);
+			HitNumberWidgetActor->SetTextAndStartAnimation(FString::Printf(TEXT("%d"), Damage), bHeadShot);
+			StoreHitNumber(HitNumberWidgetActor, HitLocation);
+		}
+	}
+}
+
+void AEnemy::StoreHitNumber(AWidgetActor* HitNumber, FVector Location)
+{
+	HitNumberActors.Add(HitNumber, Location);
+
+	FTimerHandle HitNumberTimer;
+	FTimerDelegate HitNumberDelegate;
+	HitNumberDelegate.BindUFunction(this, FName("DestroyHitNumber"), HitNumber);
+	GetWorld()->GetTimerManager().SetTimer(
+		HitNumberTimer,
+		HitNumberDelegate,
+		HitNumberDestroyTime,
+		false
+	);
+}
+
+void AEnemy::DestroyHitNumber(AWidgetActor* HitNumber)
+{
+	HitNumberActors.Remove(HitNumber);
+	HitNumber->Destroy();
 }
 
 void AEnemy::PlayHitMontage(FName Section, float PlayRate)
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-
-	if (AnimInstance)
+	if (bCanHitReact)
 	{
-		AnimInstance->Montage_Play(HitMontage, PlayRate);
-		AnimInstance->Montage_JumpToSection(Section, HitMontage);	
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_Play(HitMontage, PlayRate);
+			AnimInstance->Montage_JumpToSection(Section, HitMontage);
+		}
+
+		bCanHitReact = false;
+		const float HitReactTime{ FMath::FRandRange(HitReactTimeMin, HitReactTimeMax) };
+		
+		GetWorldTimerManager().SetTimer(
+			HitReactTimer,
+			this,
+			&AEnemy::ResetHitReactTimer,
+			HitReactTime
+		);
 	}
 }
 
-void AEnemy::ShowHealhBar()
+void AEnemy::ShowHealthBar()
 {
 	GetWorldTimerManager().ClearTimer(HealthBarTimer);
 	GetWorldTimerManager().SetTimer(
@@ -136,7 +197,7 @@ void AEnemy::HideHealthBar()
 	bShouldRotateTheHealthBar = false;
 }
 
-void AEnemy::RotateHealthBarToPlayer(FVector PlayerLocation)
+void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocation)
 {
 		FRotator WidgetRotation = HealthBar->GetRelativeRotation();
 		FVector Direction = PlayerLocation - GetActorLocation();
@@ -159,6 +220,11 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 	}
 
 	return Health;
+}
+
+void AEnemy::ResetHitReactTimer()
+{
+	bCanHitReact = true;
 }
 
 void AEnemy::Die()

@@ -21,7 +21,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* HealthBar;
 
-	void RotateHealthBarToPlayer(FVector PlayerLocation);
+	void RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocation);
 	bool bShouldRotateTheHealthBar = false;
 	class AVRShooterCharacter* VRShooterCharacter;
 
@@ -30,9 +30,10 @@ protected:
 
 	void Die();
 	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
+	void ResetHitReactTimer();
 
 private:
-	void ShowHealhBar();
+	void ShowHealthBar();
 	void HideHealthBar();
 	
 	/*UFUNCTION()
@@ -83,11 +84,38 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* HitMontage;
 
+	FTimerHandle HitReactTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitReactTimeMin = 0.5f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitReactTimeMax = .75f;
+	
+	bool bCanHitReact = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	TSubclassOf<class AWidgetActor> WidgetActorClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	TMap<AWidgetActor*, FVector> HitNumberActors;
+
+	// Time before a HitNumber is removed from the screen
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	float HitNumberDestroyTime = 1.5f;
+;
+	void StoreHitNumber(AWidgetActor* HitNumber, FVector Location);
+
+	UFUNCTION()
+	void DestroyHitNumber(AWidgetActor* HitNumber);
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter* CauserCharacter) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	
+	void ShowHitNumber(class AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot);
 
 	FORCEINLINE FString GetHeadBone() const { return HeadBone; }
 };
