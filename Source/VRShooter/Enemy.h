@@ -13,6 +13,8 @@ class VRSHOOTER_API AEnemy : public ACharacter, public IBulletHitInterface
 public:
 	AEnemy();
 
+	void BreakingBones(FVector Impulse, FVector HitLocation, FName Bone);
+
 private:
 	// OverlapShpere for when the enemy becomes hostile
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
@@ -34,6 +36,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	void Die();
+	void DestroyEnemy();
 	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
 	void ResetHitReactTimer();
 
@@ -45,6 +48,8 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 	void SetStunned(bool Stunned);
+
+	void DoDamage(AActor* Victim);
 
 private:
 	void ShowHealthBar();
@@ -78,6 +83,43 @@ private:
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex
 	);
+
+	UFUNCTION()
+	void OnLeftWeaponOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bfromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION()
+	void OnRightWeaponOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bfromSweep,
+		const FHitResult& SweepResult
+	);
+
+	// Activate/Deactivate collision for weapon boxes
+	UFUNCTION(BlueprintCallable)
+	void ActivateLeftWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void DeactivateLeftWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void ActivateRightWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void DeactivateRightWeapon();
+
+	// Base damage for enemy
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float BaseDamage = 20.f;
 
 	// Particles to spawn when hit by bullets
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -125,6 +167,14 @@ private:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FName AttackLSword = TEXT("AttackLSword");
+
+	// Collision volume for the left weapon
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UBoxComponent* LeftWeaponCollision;
+
+	// Collision volume for the right weapon
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UBoxComponent* RightWeaponCollision;
 
 	FTimerHandle HitReactTimer;
 
@@ -176,6 +226,11 @@ private:
 	// True when in attack range -> Time to Attack!!!
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
 	bool bInAttackRange = false;
+
+	FTimerHandle DeathDelayTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	float DeathDelayTime = 0.75f;
 
 public:	
 	virtual void Tick(float DeltaTime) override;

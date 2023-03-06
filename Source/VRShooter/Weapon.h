@@ -150,11 +150,11 @@ private:
 
 	// Amount of damage caused by a bullet
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	float Damage = 10.f;
+	float Damage = 25.f;
 
 	// Amount of damage when a bullet hits the head
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	float HeadShotDamage = 30.f;
+	float HeadShotDamage = 50.f;
 
 public:
 	// Adds an impulse to the Weapon

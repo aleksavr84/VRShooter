@@ -44,7 +44,6 @@ void AWidgetActor::SetTextAndStartAnimation(FString Text, bool bChangeColor)
 		// Start Animation
 		if (HitTextWidget->HitNumberAnim)
 		{
-			HitTextWidget->HitNumberAnim;
 			HitTextWidget->PlayAnimation(
 				HitTextWidget->HitNumberAnim,
 				0.f,

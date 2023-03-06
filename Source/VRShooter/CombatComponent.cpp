@@ -236,7 +236,7 @@ void UCombatComponent::SendBullet()
 							);
 
 							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
-
+							HitEnemy->BreakingBones(End, FireHit.Location, FireHit.BoneName);
 						}
 						else
 						{
@@ -252,10 +252,9 @@ void UCombatComponent::SendBullet()
 							);
 
 							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
-
+							HitEnemy->BreakingBones(End, FireHit.Location, FireHit.BoneName);
 						}
 					}
-
 				}
 				else
 				{
@@ -513,4 +512,17 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	return false;
 }
 
+float UCombatComponent::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (Health - DamageAmount <= 0.f)
+	{
+		Health = 0.f;
+	}
+	else
+	{
+		Health -= DamageAmount;
+	}
+
+	return DamageAmount;
+}
 

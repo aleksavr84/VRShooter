@@ -24,6 +24,13 @@ public:
 	UCombatComponent();
 	friend class AVRShooterCharacter;
 
+	virtual float TakeDamage(
+		float DamageAmount,
+		struct FDamageEvent const& DamageEvent,
+		class AController* EventInstigator,
+		AActor* DamageCauser
+	);
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -146,6 +153,14 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
 	ECombatState CombatState  = ECombatState::ECS_Unoccupied;
+
+	// Character Health
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float Health = 100.f;
+
+	// Character MaxHealth
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MaxHealth = 100.f;
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))

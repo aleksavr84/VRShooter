@@ -12,6 +12,7 @@
 #include "EnemyController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 
 AEnemy::AEnemy()
 {
@@ -26,6 +27,32 @@ AEnemy::AEnemy()
 
 	CombatRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CombatRangeSphere"));
 	CombatRangeSphere->SetupAttachment(GetRootComponent());
+
+	// Left and Right WeaponCollisionBoxes
+	LeftWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftWeaponCollision"));
+	LeftWeaponCollision->SetupAttachment(GetMesh(), FName("LeftWeaponBone"));
+
+	RightWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("RightWeaponCollision"));
+	RightWeaponCollision->SetupAttachment(GetMesh(), FName("RightWeaponBone"));
+}
+
+void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation,FName Bone)
+{
+	FName BoneToBreak;
+	if (Bone.ToString() == "lowerarm_l")
+	{
+		BoneToBreak = TEXT("lowerarm_l");
+	}
+	if (Bone.ToString() == "lowerarm_r")
+	{
+		BoneToBreak = TEXT("lowerarm_r");
+	}
+	if (Bone.ToString() == "head")
+	{
+		BoneToBreak = TEXT("head");
+	}
+
+	GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
 }
 
 void AEnemy::BeginPlay()
@@ -37,6 +64,27 @@ void AEnemy::BeginPlay()
 	CombatRangeSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnCombatRangeSphereOverlap);
 	CombatRangeSphere->OnComponentEndOverlap.AddDynamic(this, &AEnemy::OnCombatRangeSphereEndOverlap);
 	
+	// Bind funtions to overlap events for weapon boxes
+	LeftWeaponCollision->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnLeftWeaponOverlap);
+	RightWeaponCollision->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnRightWeaponOverlap);
+
+	// Set collision presets for weapon boxes
+	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	LeftWeaponCollision->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	LeftWeaponCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	LeftWeaponCollision->SetCollisionResponseToChannel(
+		ECollisionChannel::ECC_Pawn, 
+		ECollisionResponse::ECR_Overlap
+	);
+
+	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RightWeaponCollision->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	RightWeaponCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	RightWeaponCollision->SetCollisionResponseToChannel(
+		ECollisionChannel::ECC_Pawn,
+		ECollisionResponse::ECR_Overlap
+	);
+
 	GetMesh()->SetCollisionResponseToChannel(
 		ECollisionChannel::ECC_Visibility, 
 		ECollisionResponse::ECR_Block
@@ -62,28 +110,28 @@ void AEnemy::BeginPlay()
 		PatrolPoint
 	);
 
-	DrawDebugSphere(
+	/*DrawDebugSphere(
 		GetWorld(),
 		WorldPatrolPoint,
 		25.f,
 		12,
 		FColor::Red,
 		true
-	);
+	);*/
 
 	const FVector WorldPatrolPoint2 = UKismetMathLibrary::TransformLocation(
 		GetActorTransform(),
 		PatrolPoint2
 	);
 
-	DrawDebugSphere(
+	/*DrawDebugSphere(
 		GetWorld(),
 		PatrolPoint2,
 		25.f,
 		12,
 		FColor::Red,
 		true
-	);
+	);*/
 
 	if (EnemyController)
 	{
@@ -224,6 +272,54 @@ void AEnemy::OnCombatRangeSphereEndOverlap(UPrimitiveComponent* OverlappedCompon
 			);
 		}
 	}
+}
+
+void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	DoDamage(OtherActor);
+}
+
+void AEnemy::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	DoDamage(OtherActor);
+}
+
+void AEnemy::DoDamage(AActor* Victim)
+{
+	if (Victim == nullptr) return;
+
+	auto Character = Cast<AVRShooterCharacter>(Victim);
+
+	if (Character)
+	{
+		UGameplayStatics::ApplyDamage(
+			Character,
+			BaseDamage,
+			EnemyController,
+			this,
+			UDamageType::StaticClass()
+		);
+	}
+}
+
+void AEnemy::ActivateLeftWeapon()
+{
+	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void AEnemy::DeactivateLeftWeapon()
+{
+	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AEnemy::ActivateRightWeapon()
+{
+	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void AEnemy::DeactivateRightWeapon()
+{
+	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter* CauserCharacter)
@@ -400,7 +496,19 @@ void AEnemy::ResetHitReactTimer()
 
 void AEnemy::Die()
 {
+	GetWorldTimerManager().SetTimer(
+		DeathDelayTimer,
+		this,
+		&AEnemy::DestroyEnemy,
+		DeathDelayTime
+	);
+
 	HideHealthBar();
 	PlayHitMontage(FName("DeathA"));
+}
+
+void AEnemy::DestroyEnemy()
+{
+	Destroy();
 }
 
