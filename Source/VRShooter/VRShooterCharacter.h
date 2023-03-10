@@ -30,13 +30,27 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void PostInitializeComponents() override;
 
+	virtual float TakeDamage(
+		float DamageAmount,
+		struct FDamageEvent const& DamageEvent,
+		class AController* EventInstigator,
+		AActor* DamageCauser
+	);
+
 protected:
 	virtual void BeginPlay() override;
 	void TraceForItems();
 
 	void InitializeInterpLocations();
+	void Die();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishDeath();
 
 private:
+	// Camera Shake on taking damage
+	void PlayCameraShake();
+
 	// PostProcessing
 	void UpdateBlinkers();
 	FVector2D GetBlinkerCenter();
@@ -149,7 +163,11 @@ private:
 	void ResetEquipSoundTimer();
 
 	// Initialization
-	
+
+	// CameraShake for TakeDamge
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UCameraShakeBase> TakeDamageCameraShake;
+
 	// Time to wait before we can play another PickupSound
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	float PickupSoundResetTime = .2f;
@@ -213,6 +231,9 @@ private:
 
 	bool bWeaponHUDShowing = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* DeathMontage;
+
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
 	FORCEINLINE USkeletalMeshComponent* GetBodyMesh() const { return BodyMesh; }
@@ -245,4 +266,11 @@ public:
 	int32 GetInterpLocationIndex();
 
 	void IncrementInterpLocItemCount(int32 Index, int32 Amount);
+
+	class USoundCue* GetMeleeImpactSound();
+	UParticleSystem* GetBloodParticles();
+	class UNiagaraSystem* GetBloodNiagara();
+
+	void UpdateKillCounter(int32 KillsToAdd);
+	
 };

@@ -15,13 +15,27 @@ AWidgetActor::AWidgetActor()
 void AWidgetActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (bAutoDestroy)
+	{
+		GetWorldTimerManager().SetTimer(
+			DestroyTimer,
+			this,
+			&AWidgetActor::DestroyWidget,
+			DestroyTime
+		);
+	}
 }
 
 void AWidgetActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	RotateWidgetToPlayer();
-	MoveWidgetUpwards(DeltaTime);
+	
+	if (bShouldMoveUpwards)
+	{
+		MoveWidgetUpwards(DeltaTime);
+	}
 }
 
 void AWidgetActor::SetTextAndStartAnimation(FString Text, bool bChangeColor)
@@ -47,7 +61,7 @@ void AWidgetActor::SetTextAndStartAnimation(FString Text, bool bChangeColor)
 			HitTextWidget->PlayAnimation(
 				HitTextWidget->HitNumberAnim,
 				0.f,
-				0
+				1
 			);
 		}
 	}
@@ -67,5 +81,10 @@ void AWidgetActor::RotateWidgetToPlayer()
 void AWidgetActor::MoveWidgetUpwards(float DeltaTime)
 {
 	WidgetComp->AddWorldOffset(FVector(0.f, 0.f, MovementSpeed * DeltaTime));
+}
+
+void AWidgetActor::DestroyWidget()
+{
+	Destroy();
 }
 

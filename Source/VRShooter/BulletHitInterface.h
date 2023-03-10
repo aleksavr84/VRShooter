@@ -16,5 +16,5 @@ class VRSHOOTER_API IBulletHitInterface
 
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void BulletHit(FHitResult HitResult, class AVRShooterCharacter* CauserCharacter);
+	void BulletHit(FHitResult HitResult, AActor* Shooter, AController* ShooterController);
 };

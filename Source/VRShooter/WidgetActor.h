@@ -31,6 +31,12 @@ private:
 	class AVRShooterCharacter* ShooterCharacter;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	bool bAutoDestroy = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	bool bShouldMoveUpwards = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
 	float MovementSpeed = 125.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
@@ -38,6 +44,13 @@ private:
 
 	void RotateWidgetToPlayer();
 	void MoveWidgetUpwards(float DeltaTime);
+
+	FTimerHandle DestroyTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	float DestroyTime = 2.f;
+
+	void DestroyWidget();
 
 public:	
 	virtual void Tick(float DeltaTime) override;

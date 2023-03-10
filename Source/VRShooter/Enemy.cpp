@@ -13,6 +13,9 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
+#include "Engine/SkeletalMeshSocket.h"
+#include "NiagaraFunctionLibrary.h"
+#include "GameFramework/Controller.h"
 
 AEnemy::AEnemy()
 {
@@ -34,25 +37,9 @@ AEnemy::AEnemy()
 
 	RightWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("RightWeaponCollision"));
 	RightWeaponCollision->SetupAttachment(GetMesh(), FName("RightWeaponBone"));
-}
 
-void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation,FName Bone)
-{
-	FName BoneToBreak;
-	if (Bone.ToString() == "lowerarm_l")
-	{
-		BoneToBreak = TEXT("lowerarm_l");
-	}
-	if (Bone.ToString() == "lowerarm_r")
-	{
-		BoneToBreak = TEXT("lowerarm_r");
-	}
-	if (Bone.ToString() == "head")
-	{
-		BoneToBreak = TEXT("head");
-	}
-
-	GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
+	// AI Smooth rotation
+	bUseControllerRotationYaw = false;
 }
 
 void AEnemy::BeginPlay()
@@ -100,9 +87,13 @@ void AEnemy::BeginPlay()
 		ECollisionResponse::ECR_Ignore
 	);
 
-
 	// Get the AIController
 	EnemyController = Cast<AEnemyController>(GetController());
+
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(FName("CanAttack"), true);
+	}
 
 	// Converting PatrolPoint from LocalSpace to WorldSpace
 	const FVector WorldPatrolPoint = UKismetMathLibrary::TransformLocation(
@@ -149,7 +140,7 @@ void AEnemy::BeginPlay()
 	}
 }
 
-	void AEnemy::Tick(float DeltaTime)
+void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
@@ -174,10 +165,9 @@ void AEnemy::OnAgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	{
 		auto Character = Cast<AVRShooterCharacter>(OtherActor);
 
-		UE_LOG(LogTemp, Warning, TEXT("OnAgroSphereOverlap"));
-
 		if (Character &&
-			EnemyController)
+			EnemyController &&
+			EnemyController->GetBlackboardComponent())
 		{
 			// Set the value of the TargetBlackboardKey
 			EnemyController->GetBlackboardComponent()->SetValueAsObject(
@@ -194,17 +184,12 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 
 	auto ShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
 
-	UE_LOG(LogTemp, Warning, TEXT("OnCombatRangeSphereOverlap"));
-
 	if (ShooterCharacter)
 	{
 		bInAttackRange = true;
 
-		UE_LOG(LogTemp, Warning, TEXT("OnCombatRangeSphereOverlap-ShooterCharacter"));
-
 		if (EnemyController)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("OnCombatRangeSphereOverlap-EnemyController"));
 			EnemyController->GetBlackboardComponent()->SetValueAsBool(
 				TEXT("InAttackRange"), 
 				true
@@ -222,6 +207,20 @@ void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 	{
 		AnimInstance->Montage_Play(AttackMontage, PlayRate);
 		AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+	}
+
+	bCanAttack = false;
+
+	GetWorldTimerManager().SetTimer(
+		AttackWaitTimer,
+		this,
+		&AEnemy::ResetCanAttack,
+		AttackWaitTime
+	);
+
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(FName("CanAttack"), false);
 	}
 }
 
@@ -274,37 +273,20 @@ void AEnemy::OnCombatRangeSphereEndOverlap(UPrimitiveComponent* OverlappedCompon
 	}
 }
 
-void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
-{
-	DoDamage(OtherActor);
-}
-
-void AEnemy::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
-{
-	DoDamage(OtherActor);
-}
-
-void AEnemy::DoDamage(AActor* Victim)
-{
-	if (Victim == nullptr) return;
-
-	auto Character = Cast<AVRShooterCharacter>(Victim);
-
-	if (Character)
-	{
-		UGameplayStatics::ApplyDamage(
-			Character,
-			BaseDamage,
-			EnemyController,
-			this,
-			UDamageType::StaticClass()
-		);
-	}
-}
-
 void AEnemy::ActivateLeftWeapon()
 {
 	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	auto Character = Cast<AVRShooterCharacter>(OtherActor);
+	
+	if (Character)
+	{
+		DoDamage(Character);
+		SpawnBloodParticles(Character, LeftWeaponSocket);
+	}
 }
 
 void AEnemy::DeactivateLeftWeapon()
@@ -317,23 +299,86 @@ void AEnemy::ActivateRightWeapon()
 	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
+void AEnemy::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	auto Character = Cast<AVRShooterCharacter>(OtherActor);
+
+	if (Character)
+	{
+		DoDamage(Character);
+		SpawnBloodParticles(Character, RightWeaponSocket);
+	}
+}
+
 void AEnemy::DeactivateRightWeapon()
 {
 	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
-void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter* CauserCharacter)
+void AEnemy::SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName)
 {
-	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(CauserCharacter) : VRShooterCharacter;
+	const USkeletalMeshSocket* TipSocket{ GetMesh()->GetSocketByName(SocketName) };
 
-	if (ImpactSound)
+	if (TipSocket)
+	{
+		const FTransform SocketTransform{ TipSocket->GetSocketTransform(GetMesh()) };
+
+		if (Victim->GetBloodParticles())
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				Victim->GetBloodParticles(),
+				SocketTransform
+			);
+		}
+
+		if (Victim->GetBloodNiagara())
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				this,
+				Victim->GetBloodNiagara(),
+				SocketTransform.GetLocation(),
+				GetActorRotation()
+			);
+		}
+	}
+}
+
+void AEnemy::DoDamage(AVRShooterCharacter* Victim)
+{
+	if (Victim == nullptr) return;
+
+	UGameplayStatics::ApplyDamage(
+		Victim,
+		BaseDamage,
+		EnemyController,
+		this,
+		UDamageType::StaticClass()
+	);
+
+	if (Victim->GetMeleeImpactSound())
 	{
 		UGameplayStatics::PlaySoundAtLocation(
 			this,
-			ImpactSound,
+			Victim->GetMeleeImpactSound(),
 			GetActorLocation()
 		);
 	}
+}
+
+void AEnemy::ResetCanAttack()
+{
+	bCanAttack = true;
+
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(FName("CanAttack"), true);
+	}
+}
+
+void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, AController* ShooterController)
+{
+	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(Shooter) : VRShooterCharacter;
 
 	if (ImpactParticles)
 	{
@@ -346,8 +391,38 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter*
 		);
 	}
 
+	if (BloodNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			this,
+			BloodNiagara,
+			HitResult.Location,
+			GetActorRotation()
+		);
+	}
+
+	if (bDying)
+	{
+		//// Updating the C
+		//if (VRShooterCharacter)
+		//{
+		//	VRShooterCharacter->UpdateKillCounter(1);
+		//}
+		
+		return;
+	}
+
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			ImpactSound,
+			GetActorLocation()
+		);
+	}
+
 	ShowHealthBar();
-	
+
 	// Determine whether bullet hit stunns
 	const float Stunned = FMath::FRandRange(0.f, 1.f);
 
@@ -356,7 +431,27 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter*
 		// Stun the Enemy
 		PlayHitMontage(FName("HitReactFront"));
 		SetStunned(true);
-	}	
+	}
+}
+
+
+void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation, FName Bone)
+{
+	FName BoneToBreak;
+	if (Bone.ToString() == "lowerarm_l")
+	{
+		BoneToBreak = TEXT("lowerarm_l");
+	}
+	if (Bone.ToString() == "lowerarm_r")
+	{
+		BoneToBreak = TEXT("lowerarm_r");
+	}
+	/*if (Bone.ToString() == "head")
+	{
+		BoneToBreak = TEXT("head");
+	}*/
+
+	GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
 }
 
 void AEnemy::SetStunned(bool Stunned)
@@ -474,18 +569,30 @@ void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocati
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (Health - DamageAmount <= 0.f)
+	if (!bDying)
 	{
-		Health = 0.f;
+		// Set the target blackboard key to agro the character
+		if (EnemyController)
+		{
+			EnemyController->GetBlackboardComponent()->SetValueAsObject(
+				FName("Target"),
+				DamageCauser
+			);
+		}
 
-		Die();
+		if (Health - DamageAmount <= 0.f)
+		{
+			Health = 0.f;
 
+			UpdatePlayerKillCounter(EventInstigator->GetPawn());
+			Die();
+
+		}
+		else
+		{
+			Health -= DamageAmount;
+		}
 	}
-	else
-	{
-		Health -= DamageAmount;
-	}
-
 	return Health;
 }
 
@@ -496,19 +603,57 @@ void AEnemy::ResetHitReactTimer()
 
 void AEnemy::Die()
 {
-	GetWorldTimerManager().SetTimer(
-		DeathDelayTimer,
-		this,
-		&AEnemy::DestroyEnemy,
-		DeathDelayTime
-	);
+	if (bDying) return;
+
+	bDying = true;
 
 	HideHealthBar();
-	PlayHitMontage(FName("DeathA"));
+	
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	if (AnimInstance &&
+		DeathMontage)
+	{
+		AnimInstance->Montage_Play(DeathMontage);
+	}
+
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(
+			FName("Dead"), 
+			true
+		);
+
+		EnemyController->StopMovement();
+	}
+}
+
+void AEnemy::UpdatePlayerKillCounter(APawn* Shooter)
+{
+	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(Shooter) : VRShooterCharacter;
+
+	// Updating the KillCounter in the Character class
+	if (VRShooterCharacter &&
+		!bKillCounterUpdated)
+	{
+		VRShooterCharacter->UpdateKillCounter(1);
+		bKillCounterUpdated = true;
+	}
+}
+
+void AEnemy::FinishDeath()
+{
+	GetMesh()->bPauseAnims = true;
+
+	GetWorldTimerManager().SetTimer(
+		DeathTimer,
+		this,
+		&AEnemy::DestroyEnemy,
+		DeathTime
+	);
 }
 
 void AEnemy::DestroyEnemy()
 {
 	Destroy();
 }
-

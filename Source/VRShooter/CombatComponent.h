@@ -24,13 +24,6 @@ public:
 	UCombatComponent();
 	friend class AVRShooterCharacter;
 
-	virtual float TakeDamage(
-		float DamageAmount,
-		struct FDamageEvent const& DamageEvent,
-		class AController* EventInstigator,
-		AActor* DamageCauser
-	);
-
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -77,6 +70,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	AWeapon* EquippedWeapon;
+
+	void UpdateHitCounter(int32 HitValue);
+	void UpdateHitMultiplier(int32 MultiplierValue);
+	void CalculateScore();
 
 private:
 	UPROPERTY()
@@ -162,7 +159,91 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float MaxHealth = 100.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class USoundCue* MeleeImpactSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* BloodParticles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UNiagaraSystem* BloodNiagara;
+
+
+	// Counters for Hit, Multiplier and Combo
+	
+	// HitCounter
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
+	int32 HitCounter = 0;
+
+	FTimerHandle HitCounterResetTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitCounterResetTime = 5.f;
+
+	void StartHitCounterTimer();
+	void ClearHitCounterTimer();
+
+	// HitMultiplier
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
+	int32 HitMultiplier = 1;
+
+	FTimerHandle HitMultiplierResetTimer;
+	void ResetHitMultiplier();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitMultiplierResetTime = 5.f;
+
+	void StartHitMultiplierTimer();
+	void ClearHitMultiplierTimer();
+
+	// KillCounter
+	// Announcements - KillCounter
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	TSubclassOf<class AWidgetActor> KillCounterWidgetActorClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	class AWidgetActor* KillCounterWidgetActor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	FVector KillCounterLocationOffset = FVector(100.f, 75.f, 0.f);
+
+	// Important!!! the first array element should be an empty text!
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	TArray<FString> KillTexts{ TEXT(""), TEXT("Not Bad"), TEXT("Nice"), TEXT("Crazy"), TEXT("Brutal"), TEXT("Killmachine") };
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	int32 KillTextSeps = 3;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
+	int32 KillCounter = 0;
+
+	FTimerHandle KillCounterResetTimer;
+	void ResetKillCounter();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float KillCounterResetTime = 5.f;
+
+	void StartKillCounterTimer();
+	void SpawnKillCounterWidget();
+	void ShowHideKillCounterWidget(bool ShouldShow);
+	// Generate KillCounterText and update the KillCounterWidgetActor
+	void GenerateKillCounterText(int32 Kills);
+	
+	// Player Score
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
+	int32 PlayerScore = 0;
+
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
 	FORCEINLINE bool GetIsEquipped() { return bIsEquipped; }
+
+	FORCEINLINE USoundCue* GetMeleeImpactSound() const { return MeleeImpactSound; }
+	FORCEINLINE UParticleSystem* GetBloodParticles() const { return BloodParticles; }
+	FORCEINLINE UNiagaraSystem* GetBloodNiagara() const { return BloodNiagara; }
+	FORCEINLINE int32 GetHitCounter() const { return HitCounter; }
+	FORCEINLINE int32 GetHitMultiplier() const { return HitMultiplier; }
+	FORCEINLINE int32 GetKillCounter() const { return KillCounter; }
+	FORCEINLINE int32 GetPlayerScore() const { return PlayerScore; }
+
+	void UpdateKillCounter(int32 KillsToAdd);
 };

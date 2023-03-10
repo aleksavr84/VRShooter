@@ -18,6 +18,9 @@
 #include "VRHUD.h"
 #include "Sound/SoundCue.h"
 #include "Ammo.h"
+#include "EnemyController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Camera/CameraShakeBase.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
 {
@@ -67,8 +70,6 @@ AVRShooterCharacter::AVRShooterCharacter()
 
 	InterpComp6 = CreateDefaultSubobject<USceneComponent>(TEXT("InterpolationComponent6"));
 	InterpComp6->SetupAttachment(Camera);
-
-
 }
 
 void AVRShooterCharacter::PostInitializeComponents() 
@@ -222,7 +223,6 @@ void AVRShooterCharacter::ShowWeaponHUD()
 
 		bWeaponHUDShowing = true;
 	}
-
 }
 
 bool AVRShooterCharacter::FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation)
@@ -633,6 +633,14 @@ void AVRShooterCharacter::FireButtonPressed()
 	}
 }
 
+void AVRShooterCharacter::UpdateKillCounter(int32 KillsToAdd)
+{
+	if (Combat)
+	{
+		Combat->UpdateKillCounter(KillsToAdd);
+	}
+}
+
 void AVRShooterCharacter::FireButtonReleased()
 {
 	if (Combat)
@@ -666,3 +674,108 @@ void AVRShooterCharacter::SelectButtonReleased()
 {
 
 }
+
+float AVRShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (Combat)
+	{
+		if (Combat->Health - DamageAmount <= 0.f)
+		{
+			Combat->Health = 0.f;
+			Die();
+			
+			auto EnemyController = Cast<AEnemyController>(EventInstigator);
+
+			if (EnemyController)
+			{
+				EnemyController->GetBlackboardComponent()->SetValueAsBool(
+					FName(TEXT("PlayerDead")), 
+					true
+				);
+			}
+		}
+		else
+		{
+			PlayCameraShake();
+			Combat->Health -= DamageAmount;
+		}
+	}	
+	return DamageAmount;
+}
+
+void AVRShooterCharacter::PlayCameraShake()
+{
+	if (TakeDamageCameraShake)
+	{
+		UGameplayStatics::PlayWorldCameraShake(
+			GetWorld(),
+			TakeDamageCameraShake,
+			GetActorLocation(),
+			1000.f,
+			1000.f
+		);
+	}
+}
+
+void AVRShooterCharacter::Die()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->Montage_Play(DeathMontage);
+	}
+	else
+	{
+		FinishDeath();
+	}
+}
+
+void AVRShooterCharacter::FinishDeath()
+{
+	GetMesh()->bPauseAnims = true;
+
+	//APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0);
+	PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Controller) : PlayerController;
+
+	if (PlayerController)
+	{
+		DisableInput(PlayerController);
+	}
+}
+
+USoundCue* AVRShooterCharacter::GetMeleeImpactSound()
+{
+	if (Combat)
+	{
+		if (Combat->GetMeleeImpactSound())
+		{
+			return Combat->GetMeleeImpactSound();
+		}
+	}
+	return nullptr;
+}
+
+UParticleSystem* AVRShooterCharacter::GetBloodParticles()
+{
+	if (Combat)
+	{
+		if (Combat->GetBloodParticles())
+		{
+			return Combat->GetBloodParticles();
+		}
+	}
+	return nullptr;
+}
+
+UNiagaraSystem* AVRShooterCharacter::GetBloodNiagara()
+{
+	if (Combat)
+	{
+		if (Combat->GetBloodNiagara())
+		{
+			return Combat->GetBloodNiagara();
+		}
+	}
+	return nullptr;
+}
+

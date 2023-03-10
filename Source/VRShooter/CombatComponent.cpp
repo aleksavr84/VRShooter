@@ -13,6 +13,8 @@
 #include "Ammo.h"
 #include "BulletHitInterface.h"
 #include "Enemy.h"
+#include "TimerManager.h"
+#include "WidgetActor.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -24,11 +26,29 @@ UCombatComponent::UCombatComponent()
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	SpawnKillCounterWidget();
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+void UCombatComponent::SpawnKillCounterWidget()
+{
+	if (KillCounterWidgetActorClass &&
+		Character &&
+		Character->GetCameraComponent())
+	{
+		//// Spawning KillCounterWidget
+		FActorSpawnParameters SpawnParam;
+		SpawnParam.Instigator = Character;
+		KillCounterWidgetActor = Character->GetWorld()->SpawnActor<AWidgetActor>(KillCounterWidgetActorClass, SpawnParam);
+		KillCounterWidgetActor->AttachToComponent(Character->GetCameraComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+		KillCounterWidgetActor->SetOwner(Character);
+		KillCounterWidgetActor->SetActorHiddenInGame(true);
+		KillCounterWidgetActor->AddActorWorldOffset(KillCounterLocationOffset);
+	}
 }
 
 AWeapon* UCombatComponent::SpawnDefaultWeapon()
@@ -168,6 +188,8 @@ void UCombatComponent::PlayFireSound()
 
 void UCombatComponent::SendBullet()
 {
+	StartHitMultiplierTimer();
+	
 	// Send bullet
 	const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemMesh();
 
@@ -189,6 +211,7 @@ void UCombatComponent::SendBullet()
 			const FQuat Rotation{ SocketTransform.GetRotation() };
 			const FVector RotationAxis{ Rotation.GetAxisX() };
 			const FVector End{ Start + RotationAxis * 50'000.f };
+			const FVector BoneBreakImpulse{ Start + RotationAxis * 100.f };
 
 			FVector BeamEndPoint{ End };
 
@@ -213,7 +236,7 @@ void UCombatComponent::SendBullet()
 				
 					if (BulletHitInterface)
 					{
-						BulletHitInterface->BulletHit_Implementation(FireHit, Character);
+						BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
 					}
 
 					AEnemy* HitEnemy = Cast<AEnemy>(FireHit.GetActor());
@@ -236,7 +259,11 @@ void UCombatComponent::SendBullet()
 							);
 
 							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
-							HitEnemy->BreakingBones(End, FireHit.Location, FireHit.BoneName);
+							HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+							// Update HitCounter and ScoreMultiplier
+							UpdateHitMultiplier(GetHitMultiplier() * 2);
+							UpdateHitCounter(Damage);
 						}
 						else
 						{
@@ -252,8 +279,16 @@ void UCombatComponent::SendBullet()
 							);
 
 							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
-							HitEnemy->BreakingBones(End, FireHit.Location, FireHit.BoneName);
+							HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+						
+							// Update HitCounter and ScoreMultiplier
+							//UpdateHitMultiplier(GetHitMultiplier());
+							UpdateHitCounter(Damage);
 						}
+
+						// Reset the timers if we make a hit
+						StartHitMultiplierTimer();
+						StartKillCounterTimer();
 					}
 				}
 				else
@@ -268,6 +303,9 @@ void UCombatComponent::SendBullet()
 						);
 					}
 				}
+
+				// Reset HitCounter, HitMultiplier and Calculate Player Score
+				CalculateScore();
 			}
 
 			if (BeamParticles)
@@ -285,6 +323,112 @@ void UCombatComponent::SendBullet()
 			}
 		}
 	}
+}
+
+// Called from the Enemy Class
+void UCombatComponent::UpdateKillCounter(int32 KillsToAdd)
+{
+	KillCounter += KillsToAdd;
+	GenerateKillCounterText(KillCounter);
+	StartKillCounterTimer();
+}
+
+void UCombatComponent::GenerateKillCounterText(int32 Kills)
+{
+	int32 KillTextNumber = 0;
+
+	if (KillTexts.Num() >= 0 &&
+		KillCounterWidgetActorClass &&
+		KillCounterWidgetActor)
+	{
+		if (std::fmod(Kills / KillTextSeps, 1.0) == 0)
+		{
+			KillTextNumber = (Kills / KillTextSeps);
+
+			if (KillTextNumber > KillTexts.Num())
+			{
+				KillTextNumber = KillTexts.Num();
+			}
+			KillCounterWidgetActor->SetTextAndStartAnimation(KillTexts[KillTextNumber], true);
+			ShowHideKillCounterWidget(true);
+		}
+	}
+}
+
+void UCombatComponent::ShowHideKillCounterWidget(bool ShouldShow)
+{
+	if (KillCounterWidgetActor &&
+		ShouldShow)
+	{
+		KillCounterWidgetActor->SetActorHiddenInGame(false);
+	}
+	else if (KillCounterWidgetActor && !ShouldShow)
+	{
+		KillCounterWidgetActor->SetActorHiddenInGame(true);
+	}
+}
+
+void UCombatComponent::StartKillCounterTimer()
+{
+	if (Character)
+	{
+		Character->GetWorldTimerManager().SetTimer(
+			KillCounterResetTimer,
+			this,
+			&UCombatComponent::ResetKillCounter,
+			KillCounterResetTime
+		);
+	}
+}
+
+void UCombatComponent::ResetKillCounter()
+{
+	KillCounter = 0;
+	ShowHideKillCounterWidget(false);
+}
+
+void UCombatComponent::StartHitMultiplierTimer()
+{
+	if (Character)
+	{
+		Character->GetWorldTimerManager().SetTimer(
+			HitMultiplierResetTimer,
+			this,
+			&UCombatComponent::ResetHitMultiplier,
+			HitMultiplierResetTime
+		);
+	}
+}
+
+void UCombatComponent::ResetHitMultiplier()
+{
+	UpdateHitMultiplier(-GetHitMultiplier() + 1);
+}
+
+void UCombatComponent::ClearHitMultiplierTimer()
+{
+	//if (Character)
+	//{
+	//	Character->GetWorldTimerManager().
+	//		
+	//		//ClearTimer(HitMultiplierResetTimer);
+	//}
+}
+
+void UCombatComponent::UpdateHitCounter(int32 HitValue)
+{
+	HitCounter += HitValue;
+}
+
+void UCombatComponent::UpdateHitMultiplier(int32 MultiplierValue)
+{
+	HitMultiplier += MultiplierValue;
+	ClearHitMultiplierTimer();
+}
+
+void UCombatComponent::CalculateScore()
+{
+	PlayerScore += HitCounter * HitMultiplier;
 }
 
 void UCombatComponent::PlayGunFireMontage()
@@ -510,19 +654,5 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	}
 
 	return false;
-}
-
-float UCombatComponent::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
-{
-	if (Health - DamageAmount <= 0.f)
-	{
-		Health = 0.f;
-	}
-	else
-	{
-		Health -= DamageAmount;
-	}
-
-	return DamageAmount;
 }
 

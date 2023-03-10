@@ -14,6 +14,9 @@ public:
 	AEnemy();
 
 	void BreakingBones(FVector Impulse, FVector HitLocation, FName Bone);
+	
+	UFUNCTION(BlueprintCallable)
+	void SetStunned(bool Stunned);
 
 private:
 	// OverlapShpere for when the enemy becomes hostile
@@ -36,9 +39,15 @@ protected:
 	virtual void BeginPlay() override;
 
 	void Die();
-	void DestroyEnemy();
 	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
 	void ResetHitReactTimer();
+	void ResetCanAttack();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishDeath();
+
+	UFUNCTION()
+	void DestroyEnemy();
 
 	UFUNCTION(BlueprintCallable)
 	void PlayAttackMontage(FName Section, float PlayRate = 1.0f);
@@ -46,10 +55,8 @@ protected:
 	UFUNCTION(BlueprintPure)
 	FName GetAttackSectionName();
 
-	UFUNCTION(BlueprintCallable)
-	void SetStunned(bool Stunned);
-
-	void DoDamage(AActor* Victim);
+	void DoDamage(class AVRShooterCharacter* Victim);
+	void SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName);
 
 private:
 	void ShowHealthBar();
@@ -227,19 +234,49 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
 	bool bInAttackRange = false;
 
-	FTimerHandle DeathDelayTimer;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* BloodParticles;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
-	float DeathDelayTime = 0.75f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UNiagaraSystem* BloodNiagara;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName LeftWeaponSocket = TEXT("LeftWeaponBone");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName RightWeaponSocket = TEXT("RightWeaponBone");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
+	bool bCanAttack = true;
+
+	FTimerHandle AttackWaitTimer;
+
+	// Minimum wait time between attacks
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float AttackWaitTime = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* DeathMontage;
+
+	bool bDying = false;
+
+	FTimerHandle DeathTimer;
+	// Time after death until Destroy
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float DeathTime = 4.f;
+
+	void UpdatePlayerKillCounter(APawn* Shooter);
+	bool bKillCounterUpdated = false;
 
 public:	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	virtual void BulletHit_Implementation(FHitResult HitResult, AVRShooterCharacter* CauserCharacter) override;
+	virtual void BulletHit_Implementation(FHitResult HitResult, AActor * Shooter, AController* ShooterController) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
 	void ShowHitNumber(class AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot);
 
 	FORCEINLINE FString GetHeadBone() const { return HeadBone; }
 	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
+	FORCEINLINE UParticleSystem* GetBloodParticles() const { return BloodParticles; }
 };

@@ -57,7 +57,6 @@ void AHandController::ActorBeginOverlap(AActor* OverlappedActor, AActor* OtherAc
 
 	if (!bCanClimb && bNewCanClimb)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("Can Climb!"));
 		PlayHapticEffect();
 	}
 
