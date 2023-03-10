@@ -154,6 +154,9 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 	//UpdateBlinkers();
 
 	TraceForItems();
+
+	// Calculate FPS
+	FrameRate = 1 / DeltaTime;
 }
 
 void AVRShooterCharacter::InitializeInterpLocations()

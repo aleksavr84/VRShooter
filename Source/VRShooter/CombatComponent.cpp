@@ -15,6 +15,8 @@
 #include "Enemy.h"
 #include "TimerManager.h"
 #include "WidgetActor.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -206,6 +208,17 @@ void UCombatComponent::SendBullet()
 				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
 			}
 
+			if (MuzzleFlashNiagara)
+			{
+				UNiagaraComponent* MuzzleFlashN = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+					this,
+					MuzzleFlashNiagara,
+					SocketTransform.GetLocation(),
+					EquippedWeapon->GetActorRotation()
+				);
+				MuzzleFlashN->SetWorldRotation(SocketTransform.Rotator());
+			}
+
 			FHitResult FireHit;
 			const FVector Start{ SocketTransform.GetLocation() };
 			const FQuat Rotation{ SocketTransform.GetRotation() };
@@ -226,19 +239,19 @@ void UCombatComponent::SendBullet()
 			{
 				/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
 				DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
+				
+				IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(FireHit.GetActor());
+
+				if (BulletHitInterface)
+				{
+					BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
+				}
 
 				BeamEndPoint = FireHit.Location;
 
 				// Does hit Actor implement BulletHitInterface?
 				if (FireHit.GetActor())
 				{
-					IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(FireHit.GetActor());
-				
-					if (BulletHitInterface)
-					{
-						BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
-					}
-
 					AEnemy* HitEnemy = Cast<AEnemy>(FireHit.GetActor());
 
 					if (HitEnemy)
@@ -249,6 +262,7 @@ void UCombatComponent::SendBullet()
 						{
 							// Head shot
 							Damage = EquippedWeapon->GetHeadShotDamage();
+							//HitEnemy->SwitchBloodParticles(true);
 
 							UGameplayStatics::ApplyDamage(
 								FireHit.GetActor(),
@@ -269,6 +283,7 @@ void UCombatComponent::SendBullet()
 						{
 							// Body shot
 							Damage = EquippedWeapon->GetDamage();
+							//HitEnemy->SwitchBloodParticles(false);
 
 							UGameplayStatics::ApplyDamage(
 								FireHit.GetActor(),

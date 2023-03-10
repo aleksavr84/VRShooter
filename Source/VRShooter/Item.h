@@ -82,6 +82,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Initialization")
 	float BaseTurnRate = 45.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	FRotator WeaponMeshRotation = FRotator(0.f, 0.f, 0.f);
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 

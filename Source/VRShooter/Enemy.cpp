@@ -391,6 +391,8 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 		);
 	}
 
+	BloodNiagara = HitResult.BoneName.ToString() == GetHeadBone() ? HeadBloodNiagara : BodyBloodNiagara;
+
 	if (BloodNiagara)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
@@ -434,6 +436,21 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 	}
 }
 
+void AEnemy::SwitchBloodParticles(bool bIsHeadshot)
+{
+	if (HeadBloodNiagara &&
+		BodyBloodNiagara)
+	{
+		if (bIsHeadshot)
+		{
+			BloodNiagara = HeadBloodNiagara;
+		}
+		else
+		{
+			BloodNiagara = BodyBloodNiagara;
+		}
+	}
+}
 
 void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation, FName Bone)
 {

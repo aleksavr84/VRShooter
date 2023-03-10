@@ -8,6 +8,7 @@
 #include "Camera/CameraShakeBase.h"
 #include "TimerManager.h"
 #include "Enemy.h"
+#include "NiagaraFunctionLibrary.h"
 
 AExplosive::AExplosive()
 {
@@ -51,6 +52,16 @@ void AExplosive::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter,
 			HitResult.Location,
 			FRotator(0.f),
 			true
+		);
+	}
+
+	if (ExplodeParticlesNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			this,
+			ExplodeParticlesNiagara,
+			HitResult.Location,
+			FRotator(0.f)
 		);
 	}
 

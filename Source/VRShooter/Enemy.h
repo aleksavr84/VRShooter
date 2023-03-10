@@ -238,7 +238,12 @@ private:
 	UParticleSystem* BloodParticles;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UNiagaraSystem* BloodNiagara;
+	class UNiagaraSystem* BodyBloodNiagara;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UNiagaraSystem* HeadBloodNiagara;
+
+	UNiagaraSystem* BloodNiagara;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FName LeftWeaponSocket = TEXT("LeftWeaponBone");
@@ -275,6 +280,7 @@ public:
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
 	void ShowHitNumber(class AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot);
+	void SwitchBloodParticles(bool bIsHeadshot);
 
 	FORCEINLINE FString GetHeadBone() const { return HeadBone; }
 	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }

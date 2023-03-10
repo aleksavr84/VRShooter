@@ -37,6 +37,9 @@ public:
 		AActor* DamageCauser
 	);
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Debug, meta = (AllowPrivateAccess = "true"))
+	float FrameRate = 0.f;
+
 protected:
 	virtual void BeginPlay() override;
 	void TraceForItems();

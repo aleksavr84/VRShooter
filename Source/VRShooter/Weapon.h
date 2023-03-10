@@ -161,7 +161,6 @@ public:
 	void ThrowWeapon();
 	void Fire();
 	void Reload();
-
 	
 	// Called from CombatComponent when firing weapon
 	void DecrementAmmo();
