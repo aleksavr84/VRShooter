@@ -74,7 +74,7 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip, bool bSwapping)
 	{
 		// Get the HandMesh and the HandSocket
 		USkeletalMeshComponent* HandMesh = Character->GetBodyMesh(); //Character->GetRightHandController()->GetHandMesh();
-		const USkeletalMeshSocket* HandSocket = HandMesh->GetSocketByName(FName("RightHandSocket"));
+		const USkeletalMeshSocket* HandSocket = HandMesh->GetSocketByName(WeaponToEquip->GetHandSocketName());
 
 		if (HandSocket)
 		{
@@ -92,6 +92,7 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip, bool bSwapping)
 			}
 
 			EquippedWeapon = WeaponToEquip;
+			//EquippedWeapon->GetItemMesh()->SetWorldRotation(EquippedWeapon->GetWeaponRotation());
 			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
 
 			bIsEquipped = true;
@@ -136,7 +137,7 @@ void UCombatComponent::ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewI
 {
 	const bool bCanExchangeItems = 
 		(CurrentItemIndex != NewItemIndex) &&
-		(NewItemIndex <= Inventory.Num()) &&
+		(NewItemIndex < Inventory.Num()) &&
 		(CombatState == ECombatState::ECS_Unoccupied || 
 			CombatState == ECombatState::ECS_Equipping);
 

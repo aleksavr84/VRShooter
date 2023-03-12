@@ -133,9 +133,12 @@ void AVRShooterCharacter::BeginPlay()
 	{
 		Combat->InitializeAmmoMap();
 		Combat->EquipWeapon(Combat->SpawnDefaultWeapon());
-		Combat->Inventory.Add(Combat->EquippedWeapon);
-		Combat->EquippedWeapon->SetSlotIndex(0);
-		Combat->EquippedWeapon->SetCharacter(this);
+		if (Combat->EquippedWeapon)
+		{
+			Combat->Inventory.Add(Combat->EquippedWeapon);
+			Combat->EquippedWeapon->SetSlotIndex(0);
+			Combat->EquippedWeapon->SetCharacter(this);
+		}
 	}
 
 	// Create FInterpLocation structs for each interp location. Add  to array
@@ -555,9 +558,19 @@ void AVRShooterCharacter::GetPickupItem(AItem* Item)
 	{
 		if (Combat->Inventory.Num() < Combat->INVENTORY_CAPACITY)
 		{
+			// If the first weapon; Equip it!
+			if (Combat->Inventory.Num() == 0)
+			{
+				//Weapon->SetItemState(EItemState::EIS_EquipInterping);
+				Combat->EquipWeapon(Weapon, false);
+			}
+			else
+			{
+				Weapon->SetItemState(EItemState::EIS_PickedUp);
+			}
+
 			Weapon->SetSlotIndex(Combat->Inventory.Num());
 			Combat->Inventory.Add(Weapon);
-			Weapon->SetItemState(EItemState::EIS_PickedUp);
 		}
 		else // Inventory is ful! swap with EquippedWeapon
 		{

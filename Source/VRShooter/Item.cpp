@@ -27,6 +27,64 @@ AItem::AItem()
 	AreaSphere->SetupAttachment(GetRootComponent());
 }
 
+void AItem::OnConstruction(const FTransform& Transform)
+{
+	
+	UE_LOG(LogTemp, Warning, TEXT("OnConstruction"));
+	// Load the data in the ItemRarity DataTable
+
+	// Path to the Item Rarity DataTable
+	FString RarityTablePath(TEXT("/Script/Engine.DataTable'/Game/DataTables/DT_ItemRarity.DT_ItemRarity'"));
+	UDataTable* RarityTableObject = Cast<UDataTable>(StaticLoadObject(UDataTable::StaticClass(), nullptr, *RarityTablePath));
+	
+	if (RarityTableObject)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RarityTableObject"));
+		FItemRarityTable* RarityRow = nullptr;
+		switch (ItemRarity)
+		{
+			case EItemRarity::EIR_Damaged:
+				RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Damaged"), TEXT(""));
+				break;
+
+			case EItemRarity::EIR_Common:
+				RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Common"), TEXT(""));
+				break;
+
+			case EItemRarity::EIR_Uncommon:
+				RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Uncommon"), TEXT(""));
+				break;
+
+			case EItemRarity::EIR_Rare:
+				RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Rare"), TEXT(""));
+				break;
+
+			case EItemRarity::EIR_Legendary:
+				RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Legendary"), TEXT(""));
+				break;
+		}
+
+		if (RarityRow)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("RarityRow"));
+			GlowColor = RarityRow->GlowColor;
+			LightColor = RarityRow->LightColor;
+			DarkColor = RarityRow->DarkColor;
+			NumberOfStarts = RarityRow->NumberOfStars;
+			IconBackground = RarityRow->IconBackground;
+		}
+	}
+
+	if (MaterialInstance)
+	{
+		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
+		//DynamicMaterialInstance->SetVectorParameterValue(TEXT("FresnelColor"), GlowColor);
+		ItemMesh->SetMaterial(MaterialIndex, DynamicMaterialInstance);
+
+		//EnableGlowMaterial();
+	}
+}
+
 void AItem::BeginPlay()
 {
 	Super::BeginPlay();
@@ -180,7 +238,7 @@ void AItem::SetItemProperties(EItemState State)
 		ItemMesh->SetVisibility(true);
 		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		ItemMesh->AddWorldRotation(WeaponMeshRotation);
+		//ItemMesh->AddWorldRotation(WeaponMeshRotation);
 
 		// Set AreaSphere properties
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);

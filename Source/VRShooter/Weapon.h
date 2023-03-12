@@ -29,6 +29,12 @@ struct FWeaponDataTable : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMesh* ItemMesh;
 
+	/*UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRotator WeaponMeshRotation;*/
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName HandSocketName;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString ItemName;
 
@@ -110,6 +116,7 @@ public:
 
 protected:
 	void StopFalling();
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
 	UPROPERTY(EditAnywhere, Category = "Weapon Properties")
@@ -137,12 +144,21 @@ private:
 	// FName for the Reload Montage Section; 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	FName ReloadMontageSection = FName(TEXT("Default"));
+	
 	// true when moving the clip while realoading
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	bool bMovingClip = false;
+
 	// Name for the clip bone
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	FName ClipBoneName = TEXT("Clip_Bone");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	FName HandSocketName = TEXT("RightHandSocket");
+
+	// DataTable for weapon properties
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
+	UDataTable* WeaponDataTable;
 
 	FTimerHandle ThrowWeaponTimer;
 	float ThrowWeaponTime;
@@ -156,6 +172,8 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	float HeadShotDamage = 50.f;
 
+	int32 PreviousMaterialIndex;
+
 public:
 	// Adds an impulse to the Weapon
 	void ThrowWeapon();
@@ -168,12 +186,15 @@ public:
 	FORCEINLINE int32 GetAmmo() const { return Ammo; }
 	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
 	FORCEINLINE EAmmoType GetAmmoType() const { return AmmoType; }
+	FORCEINLINE void SetReloadMontageSection(FName Name) { ReloadMontageSection = Name; }
 	FORCEINLINE FName GetReloadMontageSection() const { return ReloadMontageSection; }
 	FORCEINLINE int32 GetMagazineCapacity() const { return MagazineCapacity; }
 	FORCEINLINE FName GetClipBoneName() const { return ClipBoneName; }
 	FORCEINLINE void SetMovingClip(bool Move) { bMovingClip = Move; }
 	FORCEINLINE float GetDamage() const { return Damage; }
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; }
+	FORCEINLINE void SetClipBoneName(FName Name) { ClipBoneName = Name; }
+	FORCEINLINE FName GetHandSocketName() const { return HandSocketName; }
 
 	void ReloadAmmo(int32 Amount);
 	
