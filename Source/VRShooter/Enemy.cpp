@@ -16,6 +16,8 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "NiagaraFunctionLibrary.h"
 #include "GameFramework/Controller.h"
+#include "Components/CapsuleComponent.h"
+#include "Camera/CameraShakeBase.h"
 
 AEnemy::AEnemy()
 {
@@ -455,6 +457,7 @@ void AEnemy::SwitchBloodParticles(bool bIsHeadshot)
 void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation, FName Bone)
 {
 	FName BoneToBreak;
+
 	if (Bone.ToString() == "lowerarm_l")
 	{
 		BoneToBreak = TEXT("lowerarm_l");
@@ -469,6 +472,12 @@ void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation, FName Bone)
 	}*/
 
 	GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
+	AddHitReactImpulse(Impulse, HitLocation, Bone, false);
+}
+
+void AEnemy::AddHitReactImpulse_Implementation(FVector Impulse, FVector HitLocation, FName Bone, bool bAddImpulse)
+{
+
 }
 
 void AEnemy::SetStunned(bool Stunned)
@@ -625,13 +634,19 @@ void AEnemy::Die()
 	bDying = true;
 
 	HideHealthBar();
-	
+
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
 	if (AnimInstance &&
-		DeathMontage)
+		DeathMontage &&
+		!bRagdollOnDeath)
 	{
 		AnimInstance->Montage_Play(DeathMontage);
+	}
+	else
+	{
+		RagdollStart();
+		FinishDeath();
 	}
 
 	if (EnemyController)
@@ -658,6 +673,22 @@ void AEnemy::UpdatePlayerKillCounter(APawn* Shooter)
 	}
 }
 
+void AEnemy::RagdollStart()
+{
+	EnemyController->StopMovement();
+
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetAllBodiesBelowSimulatePhysics(FName("pelvis"), true, true);
+	GetMesh()->GetAnimInstance()->StopAllMontages(0.2f);
+
+	/*FVector ActorForwardVector = GetActorForwardVector();
+	ActorForwardVector.Normalize(0.0001f);
+
+	GetMesh()->AddImpulseAtLocation(ActorForwardVector * -7500.f, GetActorLocation(), FName("spine_02"));*/
+}
+
 void AEnemy::FinishDeath()
 {
 	GetMesh()->bPauseAnims = true;
@@ -672,5 +703,26 @@ void AEnemy::FinishDeath()
 
 void AEnemy::DestroyEnemy()
 {
+	if (DeathNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			this,
+			DeathNiagara,
+			GetActorLocation(),
+			GetActorRotation()
+		);
+	}
+
+	if (DeathCameraShake)
+	{
+		UGameplayStatics::PlayWorldCameraShake(
+			GetWorld(),
+			DeathCameraShake,
+			GetActorLocation(),
+			1000.f,
+			1000.f
+		);
+	}
+
 	Destroy();
 }

@@ -236,6 +236,12 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
 	int32 PlayerScore = 0;
 
+	// Inventory
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
+	TArray<class AItem*> Inventory;
+
+	const int32 INVENTORY_CAPACITY{ 6 };
+
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
 	FORCEINLINE bool GetIsEquipped() { return bIsEquipped; }

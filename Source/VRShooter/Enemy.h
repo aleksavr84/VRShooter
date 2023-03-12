@@ -14,7 +14,10 @@ public:
 	AEnemy();
 
 	void BreakingBones(FVector Impulse, FVector HitLocation, FName Bone);
-	
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void AddHitReactImpulse(FVector Impulse, FVector HitLocation, FName Bone, bool bAddImpulse);
+
 	UFUNCTION(BlueprintCallable)
 	void SetStunned(bool Stunned);
 
@@ -243,6 +246,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UNiagaraSystem* HeadBloodNiagara;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UNiagaraSystem* DeathNiagara;
+
 	UNiagaraSystem* BloodNiagara;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -263,15 +269,25 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* DeathMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bRagdollOnDeath = true;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UCameraShakeBase> DeathCameraShake;
+
 	bool bDying = false;
 
 	FTimerHandle DeathTimer;
 	// Time after death until Destroy
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float DeathTime = 4.f;
+	float DeathTime = 2.0f;
 
 	void UpdatePlayerKillCounter(APawn* Shooter);
 	bool bKillCounterUpdated = false;
+
+	// Ragdoll
+	void RagdollStart();
+	void RagdollEnd();
 
 public:	
 	virtual void Tick(float DeltaTime) override;

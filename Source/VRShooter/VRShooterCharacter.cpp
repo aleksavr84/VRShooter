@@ -133,6 +133,7 @@ void AVRShooterCharacter::BeginPlay()
 	{
 		Combat->InitializeAmmoMap();
 		Combat->EquipWeapon(Combat->SpawnDefaultWeapon());
+		Combat->Inventory.Add(Combat->EquippedWeapon);
 	}
 
 	// Create FInterpLocation structs for each interp location. Add  to array
@@ -433,12 +434,17 @@ void AVRShooterCharacter::TraceForItems()
 			FHitResult ItemTraceResult;
 			Combat->TraceUnderCrosshairs(ItemTraceResult);
 
+			
+
 			if (ItemTraceResult.bBlockingHit)
 			{
 				TraceHitItem = Cast<AItem>(ItemTraceResult.GetActor());
 
+				AWeapon* Weapon = Cast<AWeapon>(TraceHitItem);
+
 				if (TraceHitItem && 
-					TraceHitItem->GetPickupWidget())
+					TraceHitItem->GetPickupWidget() &&
+					TraceHitItem != Combat->EquippedWeapon)
 				{
 					// Show item's Pickup Widget
 					TraceHitItem->RotateWidgetToPlayer(Camera->GetComponentLocation());
@@ -504,10 +510,20 @@ void AVRShooterCharacter::GetPickupItem(AItem* Item)
 	auto Weapon = Cast<AWeapon>(Item);
 
 	if (Weapon && 
-		Combat &&
-		Combat->EquippedWeapon != Weapon)
+		Combat 
+		/*&&
+		Combat->EquippedWeapon != Weapon*/
+		)
 	{
-		Combat->SwapWeapon(Weapon);
+		if (Combat->Inventory.Num() < Combat->INVENTORY_CAPACITY)
+		{
+			Combat->Inventory.Add(Weapon);
+			Weapon->SetItemState(EItemState::EIS_PickedUp);
+		}
+		else // Inventory is ful! swap with EquippedWeapon
+		{
+			Combat->SwapWeapon(Weapon);
+		}
 	}
 
 	auto Ammo = Cast<AAmmo>(Item);
@@ -666,8 +682,10 @@ void AVRShooterCharacter::ReloadButtonPressed()
 void AVRShooterCharacter::SelectButtonPressed()
 {
 	if (Combat && 
-		TraceHitItem &&
-		TraceHitItem != Combat->EquippedWeapon)
+		TraceHitItem 
+		&&
+		TraceHitItem != Combat->EquippedWeapon
+		)
 	{
 		TraceHitItem->StartItemCurve(this);
 	}

@@ -283,7 +283,6 @@ void UCombatComponent::SendBullet()
 						{
 							// Body shot
 							Damage = EquippedWeapon->GetDamage();
-							//HitEnemy->SwitchBloodParticles(false);
 
 							UGameplayStatics::ApplyDamage(
 								FireHit.GetActor(),
@@ -297,7 +296,6 @@ void UCombatComponent::SendBullet()
 							HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
 						
 							// Update HitCounter and ScoreMultiplier
-							//UpdateHitMultiplier(GetHitMultiplier());
 							UpdateHitCounter(Damage);
 						}
 
@@ -318,9 +316,6 @@ void UCombatComponent::SendBullet()
 						);
 					}
 				}
-
-				// Reset HitCounter, HitMultiplier and Calculate Player Score
-				CalculateScore();
 			}
 
 			if (BeamParticles)
@@ -417,6 +412,7 @@ void UCombatComponent::StartHitMultiplierTimer()
 
 void UCombatComponent::ResetHitMultiplier()
 {
+	CalculateScore();
 	UpdateHitMultiplier(-GetHitMultiplier() + 1);
 }
 
