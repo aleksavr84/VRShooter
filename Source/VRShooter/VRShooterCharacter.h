@@ -72,6 +72,12 @@ private:
 	void ReloadButtonPressed();
 	void SelectButtonPressed();
 	void SelectButtonReleased();
+	void FKeyPressed();
+	void OneKeyPressed();
+	void TwoKeyPressed();
+	void ThreeKeyPressed();
+	void FourKeyPressed();
+	void FiveKeyPressed();
 
 	// Teleport
 	void BeginTeleport();
@@ -84,15 +90,15 @@ private:
 
 	// Tracing
 
-	// The item currently hit by our trace in TraceForItems (could be null!)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
-	class AItem* TraceHitItem;
+	//// The item currently hit by our trace in TraceForItems (could be null!)
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	//class AItem* TraceHitItem;
 	
 	bool bShouldTraceForItems = false;
 	int8 OverlappedItemCount;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
-	AItem* TraceHitItemLastFrame;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	//AItem* TraceHitItemLastFrame;
 
 	// Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -260,7 +266,7 @@ public:
 	// No longer needed; AItem has GetInterpLocation
 	/*FVector GetCameraInterpLocation();*/
 
-	void GetPickupItem(AItem* Item);
+	void GetPickupItem(class AItem* Item);
 
 	// WeaponHUD
 	void ShowWeaponHUD();
@@ -275,5 +281,6 @@ public:
 	class UNiagaraSystem* GetBloodNiagara();
 
 	void UpdateKillCounter(int32 KillsToAdd);
+	void UnHighlightInventorySlot();
 	
 };

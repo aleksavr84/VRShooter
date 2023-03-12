@@ -68,7 +68,7 @@ AWeapon* UCombatComponent::SpawnDefaultWeapon()
 	return nullptr;
 }
 
-void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
+void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip, bool bSwapping)
 {
 	if (WeaponToEquip)
 	{
@@ -80,6 +80,16 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip)
 		{
 			// Attach the Weapon to the HandSocket
 			HandSocket->AttachActor(WeaponToEquip, HandMesh);
+
+			if (EquippedWeapon == nullptr)
+			{
+				// -1 == no EquippedWeapon yet. No need to reverse the icon Animation
+				EquipItemDelegate.Broadcast(-1, WeaponToEquip->GetSlotIndex());
+			}
+			else if (!bSwapping)
+			{
+				EquipItemDelegate.Broadcast(EquippedWeapon->GetSlotIndex(), WeaponToEquip->GetSlotIndex());
+			}
 
 			EquippedWeapon = WeaponToEquip;
 			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
@@ -109,9 +119,94 @@ void UCombatComponent::SwapWeapon(AWeapon* WeaponToSwap)
 {
 	if (WeaponToSwap)
 	{
+		if (Inventory.Num() - 1 >= EquippedWeapon->GetSlotIndex())
+		{
+			Inventory[EquippedWeapon->GetSlotIndex()] = WeaponToSwap;
+			WeaponToSwap->SetSlotIndex(EquippedWeapon->GetSlotIndex());
+		}
+
 		DropWeapon();
-		EquipWeapon(WeaponToSwap);
+		EquipWeapon(WeaponToSwap, true);
+		TraceHitItem = nullptr;
+		TraceHitItemLastFrame = nullptr;
 	}
+}
+
+void UCombatComponent::ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex)
+{
+	const bool bCanExchangeItems = 
+		(CurrentItemIndex != NewItemIndex) &&
+		(NewItemIndex <= Inventory.Num()) &&
+		(CombatState == ECombatState::ECS_Unoccupied || 
+			CombatState == ECombatState::ECS_Equipping);
+
+	if (bCanExchangeItems)
+	{
+		auto OldEquippedWeapon = EquippedWeapon;
+		auto NewWeapon = Cast<AWeapon>(Inventory[NewItemIndex]);
+
+		EquipWeapon(NewWeapon);
+
+		OldEquippedWeapon->SetItemState(EItemState::EIS_PickedUp);
+		NewWeapon->SetItemState(EItemState::EIS_Equipped);
+
+		CombatState = ECombatState::ECS_Equipping;
+
+		if (Character)
+		{
+			UAnimInstance* AnimInstance = Character->GetBodyMesh()->GetAnimInstance();
+
+			if (AnimInstance &&
+				EquipMontage)
+			{
+				AnimInstance->Montage_Play(EquipMontage, 1.0f);
+				AnimInstance->Montage_JumpToSection(FName("Equip"));
+			}
+			else
+			{
+				FinishEquipping();
+			}
+
+			NewWeapon->PlayEquipSound(true);
+
+		}
+	}
+}
+
+void UCombatComponent::HighlightInventorySlot()
+{
+	const int32 EmptySlot{ GetEmptyInventorySlot() };
+	HighlightIconDelegate.Broadcast(EmptySlot, true);
+	HighlightedSlot = EmptySlot;
+}
+
+void UCombatComponent::UnHighlightInventorySlot()
+{
+	HighlightIconDelegate.Broadcast(HighlightedSlot, false);
+	HighlightedSlot = -1;
+}
+
+int32 UCombatComponent::GetEmptyInventorySlot()
+{
+	for (int32 i = 0; i < Inventory.Num(); i++)
+	{
+		if (Inventory[i] == nullptr)
+		{
+			return i;
+		}
+	}
+
+	if (Inventory.Num() < INVENTORY_CAPACITY)
+	{
+		return Inventory.Num();
+	}
+
+	return -1; // Inventory is full!
+}
+
+void UCombatComponent::FinishEquipping()
+{
+	CombatState = ECombatState::ECS_Unoccupied;
 }
 
 void UCombatComponent::InitializeAmmoMap()

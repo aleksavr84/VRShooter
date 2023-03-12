@@ -11,9 +11,13 @@ enum class ECombatState : uint8
 	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
 	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
 	ECS_Reloading UMETA(DisplayName = "Reloading"),
+	ECS_Equipping UMETA(DisplayName = "Equipping"),
 
 	ECS_MAX UMETA(DisplayName = "DefaultMAX")
 };
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEquipItemDelegate, int32, CurrentSlotIndex, int32, NewSlotIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, int32, SlotIndex, bool, bStartAnimation);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class VRSHOOTER_API UCombatComponent : public UActorComponent
@@ -48,7 +52,7 @@ protected:
 
 	// Weapon
 	class AWeapon* SpawnDefaultWeapon();
-	void EquipWeapon(AWeapon* WeaponToEquip);
+	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
 	void DropWeapon();
 	// Drops currently equipped Weapon and Equips TraceHitItem
 	void SwapWeapon(AWeapon* WeaponToSwap);
@@ -64,6 +68,11 @@ protected:
 	// Called from Animation Blueprint with RelaseClip notify
 	UFUNCTION(BlueprintCallable)
 	void ReleaseClip();
+
+	// Inventory
+	void ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
+	int32 GetEmptyInventorySlot();
+	void HighlightInventorySlot();
 
 	// Pickup
 	void PickupAmmo(class AAmmo* Ammo);
@@ -102,6 +111,13 @@ private:
 
 	// Combat
 
+	// The item currently hit by our trace in TraceForItems (could be null!)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	class AItem* TraceHitItem;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	AItem* TraceHitItemLastFrame;
+
 	// Map to keep track of ammo of the different ammo types
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	TMap<EAmmoType, int32> AmmoMap;
@@ -120,6 +136,13 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
+
+	// Montage for reload Animations
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* EquipMontage;
+
+	UFUNCTION(BlueprintCallable)
+	void FinishEquipping();
 
 	// Transform of the clip when we first grab the clip during reloading
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -242,6 +265,18 @@ private:
 
 	const int32 INVENTORY_CAPACITY{ 6 };
 
+	// Delegate for sending slot information to Inventory when equipping
+	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
+	FEquipItemDelegate EquipItemDelegate;
+
+	// Delegate for sending slot information to playing the icon animation
+	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"))
+	FHighlightIconDelegate HighlightIconDelegate;
+
+	// The index for the currently highlighted slot
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"));
+	int32 HighlightedSlot = -1;
+
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
 	FORCEINLINE bool GetIsEquipped() { return bIsEquipped; }
@@ -255,4 +290,7 @@ public:
 	FORCEINLINE int32 GetPlayerScore() const { return PlayerScore; }
 
 	void UpdateKillCounter(int32 KillsToAdd);
+
+	// inventory
+	void UnHighlightInventorySlot();
 };

@@ -85,6 +85,7 @@ void AItem::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor*
 		if (VRShooterCharacter)
 		{
 			VRShooterCharacter->IncrementOverlappedItemCount(-1);
+			VRShooterCharacter->UnHighlightInventorySlot();
 		}
 	}
 }
@@ -195,6 +196,7 @@ void AItem::SetItemProperties(EItemState State)
 		// Set Mesh properties
 		ItemMesh->SetSimulatePhysics(true);
 		ItemMesh->SetEnableGravity(true);
+		ItemMesh->SetVisibility(true);
 		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		ItemMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
@@ -226,17 +228,21 @@ void AItem::SetItemProperties(EItemState State)
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;
+
 	case EItemState::EIS_PickedUp:
 		PickupWidget->SetVisibility(false);
+
 		// Set mesh properties
 		ItemMesh->SetSimulatePhysics(false);
 		ItemMesh->SetEnableGravity(false);
 		ItemMesh->SetVisibility(false);
 		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 		// Set AreaSphere properties
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 		// Set CollisionBox properties
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -332,7 +338,7 @@ void AItem::ItemInterp(float DeltaTime)
 	}
 }
 
-void AItem::StartItemCurve(AVRShooterCharacter* Character)
+void AItem::StartItemCurve(AVRShooterCharacter* Character, bool bForcePlaySound)
 {
 	if (Character)
 	{
@@ -344,7 +350,7 @@ void AItem::StartItemCurve(AVRShooterCharacter* Character)
 		// Add 1 to the Item Count for this interp location struct
 		ShooterCharacter->IncrementInterpLocItemCount(InterpLocIndex, 1);
 
-		PlayPickupSound();
+		PlayPickupSound(bForcePlaySound);
 
 		// Store initial location of the item
 		ItemInterpStartLocation = GetActorLocation();
@@ -367,36 +373,61 @@ void AItem::StartItemCurve(AVRShooterCharacter* Character)
 	}
 }
 
-void AItem::PlayPickupSound()
+void AItem::PlayPickupSound(bool bForcePlaySound)
 {
-	if (ShooterCharacter &&
-		ShooterCharacter->ShouldPlayPickupSound())
+	if (ShooterCharacter)
 	{
-		ShooterCharacter->StartPickupSoundTimer();
-
-		if (PickupSound)
+		if (bForcePlaySound)
 		{
-			UGameplayStatics::PlaySound2D(
-				this,
-				PickupSound
-			);
+			if (PickupSound)
+			{
+				UGameplayStatics::PlaySound2D(
+					this,
+					PickupSound
+				);
+			}
+		}
+		else if (ShooterCharacter->ShouldPlayPickupSound())
+		{
+			ShooterCharacter->StartPickupSoundTimer();
+
+			if (PickupSound)
+			{
+				UGameplayStatics::PlaySound2D(
+					this,
+					PickupSound
+				);
+			}
 		}
 	}
 }
 
-void AItem::PlayEquipSound()
+void AItem::PlayEquipSound(bool bForcePlaySound)
 {
-	if (ShooterCharacter &&
-		ShooterCharacter->ShouldPlayEquipSound())
+	if (ShooterCharacter)
 	{
-		ShooterCharacter->StartEquipSoundTimer();
 
-		if (EquipSound)
+		if (bForcePlaySound)
 		{
-			UGameplayStatics::PlaySound2D(
-				this,
-				EquipSound
-			);
+			if (EquipSound)
+			{
+				UGameplayStatics::PlaySound2D(
+					this,
+					EquipSound
+				);
+			}
+		}
+		else if (ShooterCharacter->ShouldPlayEquipSound())
+		{
+			ShooterCharacter->StartEquipSoundTimer();
+
+			if (EquipSound)
+			{
+				UGameplayStatics::PlaySound2D(
+					this,
+					EquipSound
+				);
+			}
 		}
 	}
 }
@@ -410,6 +441,7 @@ void AItem::FinishInterping()
 		// Subtract 1 from the ItemCount of the interp location struct
 		ShooterCharacter->IncrementInterpLocItemCount(InterpLocIndex, -1);
 		ShooterCharacter->GetPickupItem(this);
+		ShooterCharacter->UnHighlightInventorySlot();
 	}
 
 	// Set scale back to normal

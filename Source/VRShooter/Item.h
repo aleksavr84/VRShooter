@@ -91,13 +91,13 @@ public:
 	void RotateWidgetToPlayer(FVector PlayerLocation);
 
 	// Called in AVRShooterCharacter in GetPickupItem()
-	void PlayEquipSound();
+	void PlayEquipSound(bool bForcePlaySound = false);
 
 protected:
 	// Get Inper location based on the item type
 	FVector GetInterpLocation();
 
-	void PlayPickupSound();
+	void PlayPickupSound(bool bForcePlaySound = false);
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
@@ -199,6 +199,14 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
 	UTexture2D* AmmoIcon;
 
+	// Slot in the inventorz array
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	int32 SlotIndex = 0;
+
+	// True when the characters inventory is full
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory", meta = (AllowPrivateAccess = "true"))
+	bool bCharacterInventoryFull = false;
+
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() { return PickupWidget; }
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
@@ -208,10 +216,15 @@ public:
 	FORCEINLINE USoundCue* GetPickupSound() const { return PickupSound; }
 	FORCEINLINE USoundCue* GetEquipSound() const { return EquipSound; }
 	FORCEINLINE int32 GetItemCount() const { return ItemCount; }
+	FORCEINLINE int32 GetSlotIndex() const { return SlotIndex; }
+	FORCEINLINE void SetSlotIndex(int32 Index) { SlotIndex = Index; }
+	FORCEINLINE void SetCharacter(AVRShooterCharacter* Char) { ShooterCharacter = Char; }
+	FORCEINLINE void SetCharacterInventoryFull(bool bFull) { bCharacterInventoryFull = bFull; }
+
 	void SetItemState(EItemState State);
 
 	// Called from the AVRShooter class
-	void StartItemCurve(AVRShooterCharacter* Character);
+	void StartItemCurve(AVRShooterCharacter* Character, bool bForcePlaySound = false);
 
 	void ShowPickupWidget(bool Visible);
 };

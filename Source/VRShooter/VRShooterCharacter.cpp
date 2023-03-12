@@ -134,6 +134,8 @@ void AVRShooterCharacter::BeginPlay()
 		Combat->InitializeAmmoMap();
 		Combat->EquipWeapon(Combat->SpawnDefaultWeapon());
 		Combat->Inventory.Add(Combat->EquippedWeapon);
+		Combat->EquippedWeapon->SetSlotIndex(0);
+		Combat->EquippedWeapon->SetCharacter(this);
 	}
 
 	// Create FInterpLocation structs for each interp location. Add  to array
@@ -182,6 +184,14 @@ void AVRShooterCharacter::InitializeInterpLocations()
 
 	FInterpLocation InterpLoc6{ InterpComp6, 0 };
 	InterpLocations.Add(InterpLoc6);
+}
+
+void AVRShooterCharacter::UnHighlightInventorySlot()
+{
+	if (Combat)
+	{
+		Combat->UnHighlightInventorySlot();
+	}
 }
 
 int32 AVRShooterCharacter::GetInterpLocationIndex()
@@ -434,44 +444,76 @@ void AVRShooterCharacter::TraceForItems()
 			FHitResult ItemTraceResult;
 			Combat->TraceUnderCrosshairs(ItemTraceResult);
 
-			
-
 			if (ItemTraceResult.bBlockingHit)
 			{
-				TraceHitItem = Cast<AItem>(ItemTraceResult.GetActor());
+				Combat->TraceHitItem = Cast<AItem>(ItemTraceResult.GetActor());
+				const auto TraceHitWeapon = Cast<AWeapon>(Combat->TraceHitItem);
 
-				AWeapon* Weapon = Cast<AWeapon>(TraceHitItem);
+				if (TraceHitWeapon)
+				{
+					if (Combat->HighlightedSlot == -1)
+					{
+						// Not currently highlight a slot; highlight one
+						Combat->HighlightInventorySlot();
+					}
+				} 
+				else
+				{
+					// Is a slot being highlighted?
+					if (Combat->HighlightedSlot != -1)
+					{
+						// Unhighlight the slot
+						Combat->UnHighlightInventorySlot();
+					}
+				}
 
-				if (TraceHitItem && 
-					TraceHitItem->GetPickupWidget() &&
-					TraceHitItem != Combat->EquippedWeapon)
+				if (Combat->TraceHitItem &&
+					Combat->TraceHitItem->GetItemState() == EItemState::EIS_EquipInterping)
+				{
+					Combat->TraceHitItem = nullptr;
+				}
+
+				if (Combat->TraceHitItem &&
+					Combat->TraceHitItem->GetPickupWidget() &&
+					Combat->TraceHitItem != Combat->EquippedWeapon)
 				{
 					// Show item's Pickup Widget
-					TraceHitItem->RotateWidgetToPlayer(Camera->GetComponentLocation());
+					Combat->TraceHitItem->RotateWidgetToPlayer(Camera->GetComponentLocation());
 					//TraceHitItem->GetPickupWidget()->SetVisibility(true);
-					TraceHitItem->ShowPickupWidget(true);
+					Combat->TraceHitItem->ShowPickupWidget(true);
+					
+					if (Combat->Inventory.Num() >= Combat->INVENTORY_CAPACITY)
+					{
+						// Inventory is full
+						Combat->TraceHitItem->SetCharacterInventoryFull(true);
+					}
+					else
+					{
+						// Inventory has room
+						Combat->TraceHitItem->SetCharacterInventoryFull(false);
+					}
 				}
 
 				// We hit an AItem last frame
-				if (TraceHitItemLastFrame)
+				if (Combat->TraceHitItemLastFrame)
 				{
-					if (TraceHitItem != TraceHitItemLastFrame)
+					if (Combat->TraceHitItem != Combat->TraceHitItemLastFrame)
 					{
 						// We are hitting a different AItem this frame from last frame or AItem is NULL
 						//TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(true);
-						TraceHitItemLastFrame->ShowPickupWidget(true);
+						Combat->TraceHitItemLastFrame->ShowPickupWidget(true);
 					} 
 				}
 				// Store a reference to HitItem for next frame;
-				TraceHitItemLastFrame = TraceHitItem;
+				Combat->TraceHitItemLastFrame = Combat->TraceHitItem;
 			}
 		}
 	}
-	else if (TraceHitItemLastFrame)
+	else if (Combat->TraceHitItemLastFrame)
 	{
 		// No longer overlapping any items, Item last frame should not show widget
 		//TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
-		TraceHitItemLastFrame->ShowPickupWidget(false);
+		Combat->TraceHitItemLastFrame->ShowPickupWidget(false);
 	}
 }
 
@@ -509,14 +551,11 @@ void AVRShooterCharacter::GetPickupItem(AItem* Item)
 
 	auto Weapon = Cast<AWeapon>(Item);
 
-	if (Weapon && 
-		Combat 
-		/*&&
-		Combat->EquippedWeapon != Weapon*/
-		)
+	if (Weapon && Combat)
 	{
 		if (Combat->Inventory.Num() < Combat->INVENTORY_CAPACITY)
 		{
+			Weapon->SetSlotIndex(Combat->Inventory.Num());
 			Combat->Inventory.Add(Weapon);
 			Weapon->SetItemState(EItemState::EIS_PickedUp);
 		}
@@ -592,6 +631,18 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	
 	PlayerInputComponent->BindAction(TEXT("Select"), IE_Pressed, this, &AVRShooterCharacter::SelectButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Select"), IE_Released, this, &AVRShooterCharacter::SelectButtonReleased);
+
+	PlayerInputComponent->BindAction(TEXT("FKey"), IE_Pressed, this, &AVRShooterCharacter::FKeyPressed);
+
+	PlayerInputComponent->BindAction(TEXT("1Key"), IE_Pressed, this, &AVRShooterCharacter::OneKeyPressed);
+
+	PlayerInputComponent->BindAction(TEXT("2Key"), IE_Pressed, this, &AVRShooterCharacter::TwoKeyPressed);
+	
+	PlayerInputComponent->BindAction(TEXT("3Key"), IE_Pressed, this, &AVRShooterCharacter::ThreeKeyPressed);
+	
+	PlayerInputComponent->BindAction(TEXT("4Key"), IE_Pressed, this, &AVRShooterCharacter::FourKeyPressed);
+
+	PlayerInputComponent->BindAction(TEXT("5Key"), IE_Pressed, this, &AVRShooterCharacter::FiveKeyPressed);
 }
 
 void AVRShooterCharacter::MoveForward(float value)
@@ -681,19 +732,82 @@ void AVRShooterCharacter::ReloadButtonPressed()
 
 void AVRShooterCharacter::SelectButtonPressed()
 {
+	if (Combat &&
+		Combat->CombatState != ECombatState::ECS_Unoccupied) return;
+
 	if (Combat && 
-		TraceHitItem 
-		&&
-		TraceHitItem != Combat->EquippedWeapon
+		Combat->TraceHitItem &&
+		Combat->TraceHitItem != Combat->EquippedWeapon
 		)
 	{
-		TraceHitItem->StartItemCurve(this);
+		Combat->TraceHitItem->StartItemCurve(this, true);
+		Combat->TraceHitItem = nullptr;
 	}
 }
 
 void AVRShooterCharacter::SelectButtonReleased()
 {
 
+}
+
+void AVRShooterCharacter::FKeyPressed()
+{
+	if (Combat &&
+		Combat->EquippedWeapon)
+	{
+		if (Combat->EquippedWeapon->GetSlotIndex() == 0) return;
+		Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), 0);
+	}
+}
+
+void AVRShooterCharacter::OneKeyPressed()
+{
+	if (Combat &&
+		Combat->EquippedWeapon)
+	{
+		if (Combat->EquippedWeapon->GetSlotIndex() == 1) return;
+		Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), 1);
+	}
+}
+
+void AVRShooterCharacter::TwoKeyPressed()
+{
+	if (Combat &&
+		Combat->EquippedWeapon)
+	{
+		if (Combat->EquippedWeapon->GetSlotIndex() == 2) return;
+		Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), 2);
+	}
+}
+
+void AVRShooterCharacter::ThreeKeyPressed()
+{
+	if (Combat &&
+		Combat->EquippedWeapon)
+	{
+		if (Combat->EquippedWeapon->GetSlotIndex() == 3) return;
+		Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), 3);
+	}
+}
+
+void AVRShooterCharacter::FourKeyPressed()
+{
+	if (Combat &&
+		Combat->EquippedWeapon)
+	{
+		if (Combat->EquippedWeapon->GetSlotIndex() == 4) return;
+		Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), 4);
+	}
+}
+
+void AVRShooterCharacter::FiveKeyPressed()
+{
+	if (Combat &&
+		Combat->EquippedWeapon)
+	{
+		if (Combat->EquippedWeapon->GetSlotIndex() == 5) return;
+		Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), 5);
+	}
 }
 
 float AVRShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
