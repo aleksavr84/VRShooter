@@ -47,6 +47,8 @@ protected:
 	void PlayHapticEffect();
 	void ReloadWeapon();
 
+	void FightForYourLife();
+
 	// Line trace for Items under the crosshairs
 	bool TraceUnderCrosshairs(FHitResult& OutHitResult);
 
@@ -147,7 +149,6 @@ private:
 	// Automatic Fire
 	bool bFireButtonPressed = false;
 	bool bShouldFire = true;
-	/*float AutomaticFireRate = 0.25f;*/
 	FTimerHandle AutoFireTimer;
 	
 	FTimerHandle WeaponReloadTimer;
@@ -257,6 +258,22 @@ private:
 	int32 HighlightedSlot = -1;
 
 	FVector BeamEndPoint;
+
+	// Fight for your life
+	FTimerHandle FightForYourLifeTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float FightForYourLifeTime = 5.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float FightForYourLifeTimeRemaining = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HealtAfterSurvive = 70.f;
+
+	void FightForYourLifeTimerStart();
+	void FightForYourLifeTimerEnd();
+	void FightForYourLifeReset();
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))

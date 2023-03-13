@@ -35,6 +35,13 @@ void UCombatComponent::BeginPlay()
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (Character->GetIsFightingForLife())
+	{
+		FightForYourLifeTimeRemaining = Character->GetWorldTimerManager().GetTimerRemaining(FightForYourLifeTimer);
+		UE_LOG(LogTemp, Error, TEXT("%f"), FightForYourLifeTimeRemaining);
+		UE_LOG(LogTemp, Error, TEXT("%f"), (FightForYourLifeTimeRemaining / FightForYourLifeTime) );
+	}
 }
 
 void UCombatComponent::SpawnKillCounterWidget()
@@ -170,7 +177,6 @@ void UCombatComponent::ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewI
 			}
 
 			NewWeapon->PlayEquipSound(true);
-
 		}
 	}
 }
@@ -447,6 +453,11 @@ void UCombatComponent::UpdateKillCounter(int32 KillsToAdd)
 	KillCounter += KillsToAdd;
 	GenerateKillCounterText(KillCounter);
 	StartKillCounterTimer();
+
+	if (Character->GetIsFightingForLife())
+	{
+		FightForYourLifeReset();
+	}
 }
 
 void UCombatComponent::GenerateKillCounterText(int32 Kills)
@@ -627,6 +638,48 @@ void UCombatComponent::ReloadWeapon()
 			}
 		}
 	}
+}
+
+void UCombatComponent::FightForYourLife()
+{
+	if (Character)
+	{
+		Character->SetIsFightingForLife(true);
+		FightForYourLifeTimerStart();
+		
+		// Screen smooth fade out
+		Character->StartFade(0.f, 1.f, FightForYourLifeTime);
+	}
+}
+
+void UCombatComponent::FightForYourLifeTimerStart()
+{
+		Character->GetWorldTimerManager().SetTimer(
+		FightForYourLifeTimer,
+		this,
+		&UCombatComponent::FightForYourLifeTimerEnd,
+		FightForYourLifeTime
+	);
+}
+
+void UCombatComponent::FightForYourLifeTimerEnd()
+{
+	if (Character)
+	{
+		Character->SetIsDead(true);
+		Character->Die();
+	}
+}
+
+void UCombatComponent::FightForYourLifeReset()
+{
+	Character->GetWorldTimerManager().ClearTimer(FightForYourLifeTimer);
+	Character->SetIsFightingForLife(false);
+	Character->SetIsDead(false);
+	Health += HealtAfterSurvive;
+	Character->StartFade(1.f, 0.f, 0.1f);
+	// TODO: Play sound
+
 }
 
 bool UCombatComponent::WeaponHasAmmo()

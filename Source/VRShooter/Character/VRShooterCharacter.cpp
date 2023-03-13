@@ -664,17 +664,23 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 void AVRShooterCharacter::MoveForward(float value)
 {
-	AddMovementInput(value * Camera->GetForwardVector());
+	if (!bIsDead && !bIsFightingForLife)
+	{
+		AddMovementInput(value * Camera->GetForwardVector());
+	}
 }
 
 void AVRShooterCharacter::MoveRight(float value)
 {
-	AddMovementInput(value * Camera->GetRightVector());
+	if (!bIsDead && !bIsFightingForLife)
+	{
+		AddMovementInput(value * Camera->GetRightVector());
+	}
 }
 
 void AVRShooterCharacter::BeginTeleport()
 {
-	StartFade(0, 1);
+	StartFade(0, 1, TeleportFadeTime);
 
 	FTimerHandle Handle;
 
@@ -686,7 +692,7 @@ void AVRShooterCharacter::BeginTeleport()
 	);
 }
 
-void AVRShooterCharacter::StartFade(float FromAlpha, float ToAlpha)
+void AVRShooterCharacter::StartFade(float FromAlpha, float ToAlpha, float FadeTime)
 {
 	PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Controller) : PlayerController;
 
@@ -695,7 +701,7 @@ void AVRShooterCharacter::StartFade(float FromAlpha, float ToAlpha)
 		PlayerController->PlayerCameraManager->StartCameraFade(
 			FromAlpha,
 			ToAlpha,
-			TeleportFadeTime,
+			FadeTime,
 			FLinearColor::Black
 		);
 	}
@@ -708,12 +714,13 @@ void AVRShooterCharacter::FinishTeleport()
 
 	SetActorLocation(Destination);
 
-	StartFade(1, 0);
+	StartFade(1, 0, TeleportFadeTime);
 }
 
 void AVRShooterCharacter::FireButtonPressed()
 {
-	if (Combat)
+	if (Combat &&
+		!bIsDead)
 	{
 		Combat->FireButtonPressed();
 		bFireButtonPressed = true;
@@ -739,7 +746,9 @@ void AVRShooterCharacter::FireButtonReleased()
 
 void AVRShooterCharacter::ReloadButtonPressed()
 {
-	if (Combat)
+	if (Combat &&
+		(!bIsDead &&
+		!bIsFightingForLife))
 	{
 		// We have no ReloadMontage, simply call FinishReloading()
 		Combat->ReloadWeapon();
@@ -753,6 +762,7 @@ void AVRShooterCharacter::SelectButtonPressed()
 		Combat->CombatState != ECombatState::ECS_Unoccupied) return;
 
 	if (Combat && 
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->TraceHitItem &&
 		Combat->TraceHitItem != Combat->EquippedWeapon
 		)
@@ -776,6 +786,7 @@ void AVRShooterCharacter::XButtonPressed()
 void AVRShooterCharacter::FKeyPressed()
 {
 	if (Combat &&
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->EquippedWeapon)
 	{
 		if (Combat->EquippedWeapon->GetSlotIndex() == 0) return;
@@ -786,6 +797,7 @@ void AVRShooterCharacter::FKeyPressed()
 void AVRShooterCharacter::OneKeyPressed()
 {
 	if (Combat &&
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->EquippedWeapon)
 	{
 		if (Combat->EquippedWeapon->GetSlotIndex() == 1) return;
@@ -796,6 +808,7 @@ void AVRShooterCharacter::OneKeyPressed()
 void AVRShooterCharacter::TwoKeyPressed()
 {
 	if (Combat &&
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->EquippedWeapon)
 	{
 		if (Combat->EquippedWeapon->GetSlotIndex() == 2) return;
@@ -806,6 +819,7 @@ void AVRShooterCharacter::TwoKeyPressed()
 void AVRShooterCharacter::ThreeKeyPressed()
 {
 	if (Combat &&
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->EquippedWeapon)
 	{
 		if (Combat->EquippedWeapon->GetSlotIndex() == 3) return;
@@ -816,6 +830,7 @@ void AVRShooterCharacter::ThreeKeyPressed()
 void AVRShooterCharacter::FourKeyPressed()
 {
 	if (Combat &&
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->EquippedWeapon)
 	{
 		if (Combat->EquippedWeapon->GetSlotIndex() == 4) return;
@@ -826,6 +841,7 @@ void AVRShooterCharacter::FourKeyPressed()
 void AVRShooterCharacter::FiveKeyPressed()
 {
 	if (Combat &&
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->EquippedWeapon)
 	{
 		if (Combat->EquippedWeapon->GetSlotIndex() == 5) return;
@@ -836,6 +852,7 @@ void AVRShooterCharacter::FiveKeyPressed()
 void AVRShooterCharacter::SwitchInventoryItem(float Value)
 {
 	if (Combat &&
+		(!bIsDead && !bIsFightingForLife) &&
 		Combat->EquippedWeapon)
 	{
 		int32 DesiredSlotIndex;
@@ -867,22 +884,29 @@ void AVRShooterCharacter::SwitchInventoryItem(float Value)
 
 float AVRShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (bIsFightingForLife) return DamageAmount;
+
 	if (Combat)
 	{
 		if (Combat->Health - DamageAmount <= 0.f)
 		{
 			Combat->Health = 0.f;
-			Die();
+			//Die();
 			
-			auto EnemyController = Cast<AEnemyController>(EventInstigator);
+			if (Combat)
+			{
+				Combat->FightForYourLife();
+			}
+			
+			EnemyController = Cast<AEnemyController>(EventInstigator);
 
-			if (EnemyController)
+			/*if (EnemyController)
 			{
 				EnemyController->GetBlackboardComponent()->SetValueAsBool(
 					FName(TEXT("PlayerDead")), 
 					true
 				);
-			}
+			}*/
 		}
 		else
 		{
@@ -910,6 +934,7 @@ void AVRShooterCharacter::PlayCameraShake()
 void AVRShooterCharacter::Die()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	
 	if (AnimInstance)
 	{
 		AnimInstance->Montage_Play(DeathMontage);
@@ -917,6 +942,14 @@ void AVRShooterCharacter::Die()
 	else
 	{
 		FinishDeath();
+	}
+
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(
+			FName(TEXT("PlayerDead")),
+			true
+		);
 	}
 }
 
@@ -927,10 +960,11 @@ void AVRShooterCharacter::FinishDeath()
 	//APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0);
 	PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Controller) : PlayerController;
 
-	if (PlayerController)
+	bIsDead = true;
+	/*if (PlayerController)
 	{
 		DisableInput(PlayerController);
-	}
+	}*/
 }
 
 USoundCue* AVRShooterCharacter::GetMeleeImpactSound()

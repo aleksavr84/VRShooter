@@ -40,12 +40,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Debug, meta = (AllowPrivateAccess = "true"))
 	float FrameRate = 0.f;
 
+	void Die();
+	void StartFade(float FromAlpha, float ToAlpha, float FadeTime);
+
 protected:
 	virtual void BeginPlay() override;
 	void TraceForItems();
 
 	void InitializeInterpLocations();
-	void Die();
 
 	UFUNCTION(BlueprintCallable)
 	void FinishDeath();
@@ -83,7 +85,6 @@ private:
 
 	// Teleport
 	void BeginTeleport();
-	void StartFade(float FromAlpha, float ToAlpha);
 	void FinishTeleport();
 	bool FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation);
 	void UpdateDestinationMarker();
@@ -223,6 +224,7 @@ private:
 
 	// Object References
 	class APlayerController* PlayerController;
+	class AEnemyController* EnemyController;
 
 	// CameraInterp
 	// Distance outward from the camera for the interp destination
@@ -246,6 +248,8 @@ private:
 	UAnimMontage* DeathMontage;
 
 	bool bSwitchingInventoryItem = false;
+	bool bIsFightingForLife = false;
+	bool bIsDead = false;
 
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
@@ -255,6 +259,10 @@ public:
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return Combat; }
 	FORCEINLINE bool ShouldPlayPickupSound() const { return bShouldPlayPickupSound; }
 	FORCEINLINE bool ShouldPlayEquipSound() const { return bShouldPlayEquipSound; }
+	FORCEINLINE bool GetIsDead() const { return bIsDead; }
+	FORCEINLINE void SetIsDead(bool bDead) { bIsDead = bDead; }
+	FORCEINLINE bool GetIsFightingForLife() const { return bIsFightingForLife; }
+	FORCEINLINE void SetIsFightingForLife(bool bFightingForLife) { bIsFightingForLife = bFightingForLife; }
 
 	void StartPickupSoundTimer();
 	void StartEquipSoundTimer();
