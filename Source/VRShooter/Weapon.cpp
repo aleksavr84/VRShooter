@@ -31,28 +31,84 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 		case EWeaponType::EWT_SubmachineGun:
 			WeaponDataRow = WeaponTableObject->FindRow<FWeaponDataTable>(FName("SubmachineGun"), TEXT(""));
 			break;
+
+		case EWeaponType::EWT_Shotgun:
+			WeaponDataRow = WeaponTableObject->FindRow<FWeaponDataTable>(FName("Shotgun"), TEXT(""));
+			break;
+
+		case EWeaponType::EWT_GrenadeLauncher:
+			WeaponDataRow = WeaponTableObject->FindRow<FWeaponDataTable>(FName("GrenadeLauncher"), TEXT(""));
+			break;
 		}
 
 		if (WeaponDataRow)
 		{
+			// Weapon Details -> Initialization
+			SetItemName(WeaponDataRow->ItemName);
+			FireType = WeaponDataRow->FireType;
+			ProjectileClass = WeaponDataRow->ProjectileClass;
+			CasingClass = WeaponDataRow->CasingClass;
 			AmmoType = WeaponDataRow->AmmoType;
 			Ammo = WeaponDataRow->WeaponAmmo;
-			MagazineCapacity = WeaponDataRow->MagazingCapacity;
-			SetPickupSound(WeaponDataRow->PickupSound);
-			SetEquipSound(WeaponDataRow->EquipSound);
-			GetItemMesh()->SetSkeletalMesh(WeaponDataRow->ItemMesh);
-			SetItemName(WeaponDataRow->ItemName);
+			MagazineCapacity = WeaponDataRow->MagazineCapacity;
+			
+			//// Inventory
 			SetIconItem(WeaponDataRow->InventoryIcon);
 			SetAmmoIcon(WeaponDataRow->AmmoIcon);
-
+			
+			// Meshes and MaterialInstances
+			GetItemMesh()->SetSkeletalMesh(WeaponDataRow->ItemMesh);
 			SetMaterialInstance(WeaponDataRow->MaterialInstance);
+			SetMaterialIndex(WeaponDataRow->MaterialIndex);
 			PreviousMaterialIndex = GetMaterialIndex();
 			GetItemMesh()->SetMaterial(PreviousMaterialIndex, nullptr);
-			SetMaterialIndex(WeaponDataRow->MaterialIndex);
-			SetClipBoneName(WeaponDataRow->ClipBoneName);
-			SetReloadMontageSection(WeaponDataRow->ReloadMontageSection);
+			
+			//// Animations and Montages
 			GetItemMesh()->SetAnimInstanceClass(WeaponDataRow->AnimBP);
+			FireAnimation = WeaponDataRow->FireAnimation;
+			ReloadAnimation = WeaponDataRow->ReloadAnimation;
+			ReloadMontage = WeaponDataRow->ReloadMontage;
+			WeaponReloadAnimLength = WeaponDataRow->WeaponReloadAnimLength;
+			SetReloadMontageSection(WeaponDataRow->ReloadMontageSection);
+			
+			//// VFX
+			MuzzleFlash = WeaponDataRow->MuzzleFlash;
+			MuzzleFlashNiagara = WeaponDataRow->MuzzleFlashNiagara;
+			ImpactParticles = WeaponDataRow->ImpactParticles;
+			BeamParticles = WeaponDataRow->BeamParticles;
+			
+			//// SFX
+			SetPickupSound(WeaponDataRow->PickupSound);
+			SetEquipSound(WeaponDataRow->EquipSound);
+			FireSound = WeaponDataRow->FireSound;
+			
+			//// Bones and Sockets
+			ClipBoneName = WeaponDataRow->ClipBoneName;
 			HandSocketName = WeaponDataRow->HandSocketName;
+			MuzzleFlashSocketName = WeaponDataRow->MuzzleFlashSocketName;
+
+			//// Weapon Properties
+			//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties")
+			//	bool bAutomatic;
+			//
+			AutomaticFireRate = WeaponDataRow->AutoFireRate;
+			Damage = WeaponDataRow->Damage;
+			HeadShotDamage = WeaponDataRow->HeadShotDamage;
+			//// Crosshairs
+			//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+			//	UTexture2D* CrosshairsMiddle;
+			//
+			//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+			//	UTexture2D* CrosshairsLeft;
+			//
+			//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+			//	UTexture2D* CrosshairsRight;
+			//
+			//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+			//	UTexture2D* CrosshairsBottom;
+			//
+			//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+			//	UTexture2D* CrosshairsTop;
 
 			if (GetMaterialInstance())
 			{
@@ -116,7 +172,7 @@ void AWeapon::StopFalling()
 	bFalling = false;
 }
 
-void AWeapon::Fire()
+void AWeapon::Fire(const FVector& HitTarget)
 {
 	if (FireAnimation)
 	{
@@ -165,6 +221,19 @@ void AWeapon::DecrementAmmo()
 	{
 		--Ammo;
 	}
+}
+
+const USkeletalMeshSocket* AWeapon::GetMuzzleFlashSocket()
+{
+	USkeletalMeshComponent* WeaponMesh = GetItemMesh();
+
+	if (WeaponMesh)
+	{
+
+		return WeaponMesh->GetSocketByName(MuzzleFlashSocketName);
+	}
+
+	return nullptr;
 }
 
 void AWeapon::ReloadAmmo(int32 Amount)

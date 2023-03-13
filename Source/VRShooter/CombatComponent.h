@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "AmmoType.h"
+#include "Types.h"
 #include "CombatComponent.generated.h"
 
 UENUM(BlueprintType)
@@ -93,22 +93,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class USoundCue* FireSound;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UParticleSystem* MuzzleFlash;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UNiagaraSystem* MuzzleFlashNiagara;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* ImpactParticles;
-
-	// Smoke Trail for bullets
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UParticleSystem* BeamParticles;
-
 	// Combat
 
 	// The item currently hit by our trace in TraceForItems (could be null!)
@@ -130,9 +114,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	int32 StartingARAmmo = 120;
 
-	// Montage for reload Animations
+	// Starting Ammount of Grenade Launcher ammo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	UAnimMontage* ReloadMontage;
+	int32 StartingGrenadeAmmo = 20;
 
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
@@ -163,13 +147,9 @@ private:
 	// Automatic Fire
 	bool bFireButtonPressed = false;
 	bool bShouldFire = true;
-	float AutomaticFireRate = 0.25f;
+	/*float AutomaticFireRate = 0.25f;*/
 	FTimerHandle AutoFireTimer;
 	
-	// Reload without ReloadMontage
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float WeaponReloadAnimLength = 1.73f;
-
 	FTimerHandle WeaponReloadTimer;
 	void WeaponReloadAnimStart();
 	void WeaponReloadAnimFinished();
@@ -193,7 +173,6 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UNiagaraSystem* BloodNiagara;
-
 
 	// Counters for Hit, Multiplier and Combo
 	
@@ -276,6 +255,8 @@ private:
 	// The index for the currently highlighted slot
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"));
 	int32 HighlightedSlot = -1;
+
+	FVector BeamEndPoint;
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))

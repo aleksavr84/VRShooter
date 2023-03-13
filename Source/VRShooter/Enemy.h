@@ -289,6 +289,17 @@ private:
 	void RagdollStart();
 	void RagdollEnd();
 
+	// SlowMotion
+	FTimerHandle SlowMotionResetTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float SlowMotionResetTime = .25f;
+
+	void StartSlowMotion();
+
+	UFUNCTION()
+	void StopSlowMotion();
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Item.h"
-#include "AmmoType.h"
+#include "Types.h"
 #include "Engine/DataTable.h"
 #include "Weapon.generated.h"
 
@@ -11,98 +11,125 @@ struct FWeaponDataTable : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EAmmoType AmmoType;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 WeaponAmmo;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 MagazingCapacity;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	class USoundCue* PickupSound;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USoundCue* EquipSound;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	USkeletalMesh* ItemMesh;
-
-	/*UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FRotator WeaponMeshRotation;*/
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName HandSocketName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	// Weapon Details -> Initialization
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
 	FString ItemName;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	EFireType FireType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	TSubclassOf<class AProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	TSubclassOf<class ACasing> CasingClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	EAmmoType AmmoType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	int32 WeaponAmmo;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	int32 MagazineCapacity;
+
+	// Inventory
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
 	UTexture2D* InventoryIcon;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
 	UTexture2D* AmmoIcon;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	// Meshes and MaterialInstances
+	UPROPERTY(EditAnywhere, Category = "Meshes and Materials")
+	USkeletalMesh* ItemMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Meshes and Materials")
 	UMaterialInstance* MaterialInstance;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, Category = "Meshes and Materials")
 	int32 MaterialIndex;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName ClipBoneName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName ReloadMontageSection;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	// Animations and Montages
+	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
 	TSubclassOf<UAnimInstance> AnimBP;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UTexture2D* CrosshairsMiddle;
+	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
+	class UAnimationAsset* FireAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UTexture2D* CrosshairsLeft;
+	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
+	class UAnimationAsset* ReloadAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UTexture2D* CrosshairsRight;
+	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
+	class UAnimMontage* ReloadMontage;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UTexture2D* CrosshairsBottom;
+	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
+	float WeaponReloadAnimLength;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	UTexture2D* CrosshairsTop;
+	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
+	FName ReloadMontageSection;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float AutoFireRate;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	// VFX
+	UPROPERTY(EditAnywhere, Category = "Visual Effects")
 	class UParticleSystem* MuzzleFlash;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, Category = "Visual Effects")
+	class UNiagaraSystem* MuzzleFlashNiagara;
+
+	UPROPERTY(EditAnywhere, Category = "Visual Effects")
+	UParticleSystem* ImpactParticles;
+
+	UPROPERTY(EditAnywhere, Category = "Visual Effects")
+	UParticleSystem* BeamParticles;
+
+	// SFX
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound Effects")
+	class USoundCue* PickupSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound Effects")
+	USoundCue* EquipSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound Effects")
 	USoundCue* FireSound;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName BoneToHide;
+	// Bones and Sockets
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bones and Sockets")
+	FName HandSocketName;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bones and Sockets")
+	FName MuzzleFlashSocketName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bones and Sockets")
+	FName ClipBoneName;
+
+	// Weapon Properties
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties")
 	bool bAutomatic;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties")
+	float AutoFireRate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties")
 	float Damage;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties")
 	float HeadShotDamage;
-};
 
-UENUM(BlueprintType)
-enum class EWeaponType : uint8
-{
-	EWT_Pistol UMETA(DisplayName = "Pistol"),
-	EWT_SubmachineGun UMETA(DisplayName = "SubmachineGun"),
+	// Crosshairs
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+	UTexture2D* CrosshairsMiddle;
 
-	EWT_MAX UMETA(DisplayName = "DefaultMax")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+	UTexture2D* CrosshairsLeft;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+	UTexture2D* CrosshairsRight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+	UTexture2D* CrosshairsBottom;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Crosshairs")
+	UTexture2D* CrosshairsTop;
 };
 
 UCLASS()
@@ -119,73 +146,113 @@ protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
-	UPROPERTY(EditAnywhere, Category = "Weapon Properties")
-	class UAnimationAsset* FireAnimation;
+	// DataTable for weapon properties
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	UDataTable* WeaponDataTable;
 
-	UPROPERTY(EditAnywhere, Category = "Weapon Properties")
-	class UAnimationAsset* ReloadAnimation;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	EWeaponType WeaponType = EWeaponType::EWT_Pistol;
 
-	UPROPERTY(EditAnywhere, Category = "Weapon Properties")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	EFireType FireType = EFireType::EFT_HitScan;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	class TSubclassOf<AProjectile> ProjectileClass;
+
+	UPROPERTY(VisibleAnywhere, Category = "Initialization")
 	TSubclassOf<class ACasing> CasingClass;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess= "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	EAmmoType AmmoType = EAmmoType::EAT_9mm;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
 	int32 Ammo = 0;
 
 	// Maximum ammo that our weapon can hold
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
 	int32 MagazineCapacity = 30;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	EWeaponType WeaponType = EWeaponType::EWT_Pistol;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animations and Montages", meta = (AllowPrivateAccess = "true"))
+	class UAnimationAsset* FireAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	EAmmoType AmmoType = EAmmoType::EAT_9mm;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animations and Montages", meta = (AllowPrivateAccess = "true"))
+	class UAnimationAsset* ReloadAnimation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animations and Montages", meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* ReloadMontage;
+
+	// Reload without ReloadMontage
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animations and Montages", meta = (AllowPrivateAccess = "true"))
+	float WeaponReloadAnimLength = 1.73f;
+
+	/// 
+	///  VFX
+	/// 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Visual Effects", meta = (AllowPrivateAccess = "true"))
+	class UParticleSystem* MuzzleFlash;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Visual Effects", meta = (AllowPrivateAccess = "true"))
+	class UNiagaraSystem* MuzzleFlashNiagara;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Visual Effects", meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* ImpactParticles;
+
+	// Smoke Trail for bullets
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Visual Effects", meta = (AllowPrivateAccess = "true"))
+	UParticleSystem* BeamParticles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound Effects", meta = (AllowPrivateAccess = "true"))
+	class USoundCue* FireSound;
+
+	// Name for the clip bone
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bones and Sockets", meta = (AllowPrivateAccess = "true"))
+	FName ClipBoneName = TEXT("Clip_Bone");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bones and Sockets", meta = (AllowPrivateAccess = "true"))
+	FName MuzzleFlashSocketName = TEXT("Muzzle");
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bones and Sockets", meta = (AllowPrivateAccess = "true"))
+	FName HandSocketName = TEXT("RightHandSocket");
 
 	// FName for the Reload Montage Section; 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bones and Sockets", meta = (AllowPrivateAccess = "true"))
 	FName ReloadMontageSection = FName(TEXT("Default"));
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float AutomaticFireRate = 0.25f;
+
+	// Amount of damage caused by a bullet
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float Damage = 25.f;
+
+	// Amount of damage when a bullet hits the head
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	float HeadShotDamage = 50.f;
+
 	// true when moving the clip while realoading
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	bool bMovingClip = false;
 
-	// Name for the clip bone
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	FName ClipBoneName = TEXT("Clip_Bone");
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	FName HandSocketName = TEXT("RightHandSocket");
-
-	// DataTable for weapon properties
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = DataTable, meta = (AllowPrivateAccess = "true"))
-	UDataTable* WeaponDataTable;
-
 	FTimerHandle ThrowWeaponTimer;
 	float ThrowWeaponTime;
 	bool bFalling;
-
-	// Amount of damage caused by a bullet
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	float Damage = 25.f;
-
-	// Amount of damage when a bullet hits the head
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
-	float HeadShotDamage = 50.f;
-
 	int32 PreviousMaterialIndex;
 
 public:
 	// Adds an impulse to the Weapon
 	void ThrowWeapon();
-	void Fire();
+	virtual void Fire(const FVector& HitTarget);
 	void Reload();
 	
 	// Called from CombatComponent when firing weapon
 	void DecrementAmmo();
 
+	FORCEINLINE void SetProjectileClass(TSubclassOf<AProjectile> Projectile) { ProjectileClass = Projectile; }
+	FORCEINLINE TSubclassOf<AProjectile> GetProjectileClass() const { return ProjectileClass; }
 	FORCEINLINE int32 GetAmmo() const { return Ammo; }
 	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
 	FORCEINLINE EAmmoType GetAmmoType() const { return AmmoType; }
+	FORCEINLINE UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 	FORCEINLINE void SetReloadMontageSection(FName Name) { ReloadMontageSection = Name; }
 	FORCEINLINE FName GetReloadMontageSection() const { return ReloadMontageSection; }
 	FORCEINLINE int32 GetMagazineCapacity() const { return MagazineCapacity; }
@@ -195,6 +262,17 @@ public:
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; }
 	FORCEINLINE void SetClipBoneName(FName Name) { ClipBoneName = Name; }
 	FORCEINLINE FName GetHandSocketName() const { return HandSocketName; }
+	FORCEINLINE EFireType GetFireType() const { return FireType; }
+	FORCEINLINE UParticleSystem* GetMuzzleFlash() const { return MuzzleFlash; }
+	FORCEINLINE UNiagaraSystem* GetMuzzleFlashNiagara() const { return MuzzleFlashNiagara; }
+	FORCEINLINE UParticleSystem* GetImpactParticles() const { return ImpactParticles; }
+	FORCEINLINE UParticleSystem* GetBeamParticles() const { return BeamParticles; }
+	FORCEINLINE USoundCue* GetFireSound() const { return FireSound; }
+	FORCEINLINE FName GetMuzzleFlashSocketName() const { return MuzzleFlashSocketName; }
+	FORCEINLINE float GetAutomaticFireRate() const { return AutomaticFireRate; }
+	FORCEINLINE float GetWeaponReloadAnimLength() const { return WeaponReloadAnimLength; }
+
+	const USkeletalMeshSocket* GetMuzzleFlashSocket();
 
 	void ReloadAmmo(int32 Amount);
 	

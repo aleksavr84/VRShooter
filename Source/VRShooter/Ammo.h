@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Item.h"
-#include "AmmoType.h"
+#include "Types.h"
 #include "Ammo.generated.h"
 
 UCLASS()

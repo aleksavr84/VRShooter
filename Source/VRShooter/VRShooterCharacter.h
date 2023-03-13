@@ -78,6 +78,7 @@ private:
 	void ThreeKeyPressed();
 	void FourKeyPressed();
 	void FiveKeyPressed();
+	void SwitchInventoryItem(float Value);
 
 	// Teleport
 	void BeginTeleport();
@@ -242,6 +243,8 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* DeathMontage;
+
+	bool bSwitchingInventoryItem = false;
 
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }

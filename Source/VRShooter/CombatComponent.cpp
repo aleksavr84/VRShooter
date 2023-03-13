@@ -17,6 +17,7 @@
 #include "WidgetActor.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
+#include "Types.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -214,6 +215,7 @@ void UCombatComponent::InitializeAmmoMap()
 {
 	AmmoMap.Add(EAmmoType::EAT_9mm, Starting9mmAmmo);
 	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
+	AmmoMap.Add(EAmmoType::EAT_Grenade, StartingGrenadeAmmo);
 }
 
 void UCombatComponent::PickupAmmo(AAmmo* Ammo)
@@ -278,14 +280,17 @@ void UCombatComponent::FireWeapon()
 void UCombatComponent::PlayFireSound()
 {
 	// Play fire sound
-	if (FireSound)
+	if (EquippedWeapon &&
+		EquippedWeapon->GetFireSound())
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
+		UGameplayStatics::PlaySound2D(this, EquippedWeapon->GetFireSound());
 	}
 }
 
 void UCombatComponent::SendBullet()
 {
+	if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_GrenadeLauncher) return;
+
 	StartHitMultiplierTimer();
 	
 	// Send bullet
@@ -293,22 +298,22 @@ void UCombatComponent::SendBullet()
 
 	if (WeaponMesh)
 	{
-		const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(FName("Muzzle"));
+		const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(EquippedWeapon->GetMuzzleFlashSocketName());
 
 		if (BarrelSocket)
 		{
 			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
 
-			if (MuzzleFlash)
+			if (EquippedWeapon->GetMuzzleFlash())
 			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
 			}
 
-			if (MuzzleFlashNiagara)
+			if (EquippedWeapon->GetMuzzleFlashNiagara())
 			{
 				UNiagaraComponent* MuzzleFlashN = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 					this,
-					MuzzleFlashNiagara,
+					EquippedWeapon->GetMuzzleFlashNiagara(),
 					SocketTransform.GetLocation(),
 					EquippedWeapon->GetActorRotation()
 				);
@@ -322,7 +327,7 @@ void UCombatComponent::SendBullet()
 			const FVector End{ Start + RotationAxis * 50'000.f };
 			const FVector BoneBreakImpulse{ Start + RotationAxis * 100.f };
 
-			FVector BeamEndPoint{ End };
+			BeamEndPoint = End ;
 
 			GetWorld()->LineTraceSingleByChannel(
 				FireHit,
@@ -330,6 +335,11 @@ void UCombatComponent::SendBullet()
 				End,
 				ECollisionChannel::ECC_Visibility
 			);
+
+			/*if (EquippedWeapon->GetFireType() == EFireType::EFT_Projectile)
+			{
+				EquippedWeapon->Fire(FireHit.Location);
+			}*/
 
 			if (FireHit.bBlockingHit)
 			{
@@ -372,7 +382,7 @@ void UCombatComponent::SendBullet()
 							HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
 
 							// Update HitCounter and ScoreMultiplier
-							UpdateHitMultiplier(GetHitMultiplier() * 2);
+							UpdateHitMultiplier(GetHitMultiplier() + 1);
 							UpdateHitCounter(Damage);
 						}
 						else
@@ -403,22 +413,22 @@ void UCombatComponent::SendBullet()
 				else
 				{
 					// Spawn default particles
-					if (ImpactParticles)
+					if (EquippedWeapon->GetImpactParticles())
 					{
 						UGameplayStatics::SpawnEmitterAtLocation(
 							GetWorld(),
-							ImpactParticles,
+							EquippedWeapon->GetImpactParticles(),
 							FireHit.Location
 						);
 					}
 				}
 			}
 
-			if (BeamParticles)
+			if (EquippedWeapon->GetBeamParticles())
 			{
 				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
 					GetWorld(),
-					BeamParticles,
+					EquippedWeapon->GetBeamParticles(),
 					SocketTransform
 				);
 
@@ -451,10 +461,11 @@ void UCombatComponent::GenerateKillCounterText(int32 Kills)
 		{
 			KillTextNumber = (Kills / KillTextSeps);
 
-			if (KillTextNumber > KillTexts.Num())
+			if (KillTextNumber > KillTexts.Num() - 1)
 			{
-				KillTextNumber = KillTexts.Num();
+				KillTextNumber = KillTexts.Num() - 1;
 			}
+			
 			KillCounterWidgetActor->SetTextAndStartAnimation(KillTexts[KillTextNumber], true);
 			ShowHideKillCounterWidget(true);
 		}
@@ -541,7 +552,7 @@ void UCombatComponent::CalculateScore()
 void UCombatComponent::PlayGunFireMontage()
 {
 	// Playing Firing Animation
-	EquippedWeapon->Fire();
+	EquippedWeapon->Fire(BeamEndPoint);
 }
 
 void UCombatComponent::PlayHapticEffect()
@@ -555,14 +566,17 @@ void UCombatComponent::PlayHapticEffect()
 
 void UCombatComponent::StartFireTimer()
 {
-	CombatState = ECombatState::ECS_FireTimerInProgress;
+	if (EquippedWeapon)
+	{
+		CombatState = ECombatState::ECS_FireTimerInProgress;
 
-	Character->GetWorldTimerManager().SetTimer(
-		AutoFireTimer,
-		this,
-		&UCombatComponent::AutoFireReset,
-		AutomaticFireRate
-	);
+		Character->GetWorldTimerManager().SetTimer(
+			AutoFireTimer,
+			this,
+			&UCombatComponent::AutoFireReset,
+			EquippedWeapon->GetAutomaticFireRate()
+		);
+	}
 }
 
 void UCombatComponent::AutoFireReset()
@@ -597,9 +611,9 @@ void UCombatComponent::ReloadWeapon()
 		{
 			UAnimInstance* AnimInstace = Character->GetBodyMesh()->GetAnimInstance();
 
-			if (ReloadMontage && AnimInstace)
+			if (EquippedWeapon->GetReloadMontage() && AnimInstace)
 			{
-				AnimInstace->Montage_Play(ReloadMontage);
+				AnimInstace->Montage_Play(EquippedWeapon->GetReloadMontage());
 				AnimInstace->Montage_JumpToSection(
 					EquippedWeapon->GetReloadMontageSection());
 
@@ -664,12 +678,15 @@ void UCombatComponent::ReleaseClip()
 
 void UCombatComponent::WeaponReloadAnimStart()
 {
-	Character->GetWorldTimerManager().SetTimer(
-		WeaponReloadTimer,
-		this,
-		&UCombatComponent::WeaponReloadAnimFinished,
-		WeaponReloadAnimLength
-	);
+	if (EquippedWeapon->GetWeaponReloadAnimLength())
+	{
+		Character->GetWorldTimerManager().SetTimer(
+			WeaponReloadTimer,
+			this,
+			&UCombatComponent::WeaponReloadAnimFinished,
+			EquippedWeapon->GetWeaponReloadAnimLength()
+		);
+	}
 }
 
 void UCombatComponent::WeaponReloadAnimFinished()

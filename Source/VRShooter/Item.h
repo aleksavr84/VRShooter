@@ -3,40 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
+#include "Types.h"
 #include "Item.generated.h"
-
-UENUM(BlueprintType)
-enum class EItemType : uint8
-{
-	EIT_Ammo UMETA(DisplayName = "Ammo"),
-	EIT_Weapon UMETA(DisplayName = "Weapon"),
-
-	EIT_MAX UMETA(DisplayName = "DefaultMAX")
-};
-
-UENUM(BlueprintType)
-enum class EItemState : uint8
-{
-	EIS_Pickup UMETA(DisplayName = "Pickup"),
-	EIS_EquipInterping UMETA(DisplayName = "EquipInterping"),
-	EIS_PickedUp UMETA(DisplayName = "PickedUp"),
-	EIS_Equipped UMETA(DisplayName = "Equipped"),
-	EIS_Falling UMETA(DisplayName = "Falling"),
-
-	EIS_MAX UMETA(DisplayName = "DefaultMAX")
-};
-
-UENUM(BlueprintType)
-enum class EItemRarity : uint8
-{
-	EIR_Damaged UMETA(DisplayName = "Damaged"),
-	EIR_Common UMETA(DisplayName = "Common"),
-	EIR_Uncommon UMETA(DisplayName = "Uncommon"),
-	EIR_Rare UMETA(DisplayName = "Rare"),
-	EIR_Legendary UMETA(DisplayName = "Legendary"),
-
-	EIR_MAX UMETA(DisplayName = "DefaultMAX")
-};
 
 USTRUCT(BlueprintType)
 struct FItemRarityTable : public FTableRowBase

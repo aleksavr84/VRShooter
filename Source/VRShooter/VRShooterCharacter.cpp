@@ -561,7 +561,6 @@ void AVRShooterCharacter::GetPickupItem(AItem* Item)
 			// If the first weapon; Equip it!
 			if (Combat->Inventory.Num() == 0)
 			{
-				//Weapon->SetItemState(EItemState::EIS_EquipInterping);
 				Combat->EquipWeapon(Weapon, false);
 			}
 			else
@@ -571,6 +570,7 @@ void AVRShooterCharacter::GetPickupItem(AItem* Item)
 
 			Weapon->SetSlotIndex(Combat->Inventory.Num());
 			Combat->Inventory.Add(Weapon);
+			Weapon->SetOwner(this);
 		}
 		else // Inventory is ful! swap with EquippedWeapon
 		{
@@ -656,6 +656,8 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction(TEXT("4Key"), IE_Pressed, this, &AVRShooterCharacter::FourKeyPressed);
 
 	PlayerInputComponent->BindAction(TEXT("5Key"), IE_Pressed, this, &AVRShooterCharacter::FiveKeyPressed);
+
+	PlayerInputComponent->BindAxis(TEXT("SwitchInventoryItem"), this, &AVRShooterCharacter::SwitchInventoryItem);
 }
 
 void AVRShooterCharacter::MoveForward(float value)
@@ -820,6 +822,38 @@ void AVRShooterCharacter::FiveKeyPressed()
 	{
 		if (Combat->EquippedWeapon->GetSlotIndex() == 5) return;
 		Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), 5);
+	}
+}
+
+void AVRShooterCharacter::SwitchInventoryItem(float Value)
+{
+	if (Combat &&
+		Combat->EquippedWeapon)
+	{
+		int32 DesiredSlotIndex;
+
+		// Switch to Next Weapon
+		if (Value > 0.25 &&
+			!bSwitchingInventoryItem)
+		{
+			DesiredSlotIndex = Combat->EquippedWeapon->GetSlotIndex() + 1;
+			DesiredSlotIndex = Combat->Inventory.Num() - 1 > DesiredSlotIndex ? DesiredSlotIndex : Combat->Inventory.Num() - 1;
+			Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), DesiredSlotIndex);
+			bSwitchingInventoryItem = true;
+		}
+		// Switch to Previous Weapon
+		else if (Value < -0.25 &&
+			!bSwitchingInventoryItem)
+		{
+			DesiredSlotIndex = Combat->EquippedWeapon->GetSlotIndex() - 1;
+			DesiredSlotIndex =  DesiredSlotIndex < 0 ? 0 : DesiredSlotIndex;
+			Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), DesiredSlotIndex);
+			bSwitchingInventoryItem = true;
+		}
+		else
+		{
+			bSwitchingInventoryItem = false;
+		}
 	}
 }
 

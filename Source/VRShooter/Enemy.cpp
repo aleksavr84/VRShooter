@@ -611,6 +611,7 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 			Health = 0.f;
 
 			UpdatePlayerKillCounter(EventInstigator->GetPawn());
+			
 			Die();
 
 		}
@@ -634,7 +635,7 @@ void AEnemy::Die()
 	bDying = true;
 
 	HideHealthBar();
-
+	
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
 	if (AnimInstance &&
@@ -645,8 +646,10 @@ void AEnemy::Die()
 	}
 	else
 	{
+		
+		StartSlowMotion();
 		RagdollStart();
-		FinishDeath();
+		//FinishDeath();
 	}
 
 	if (EnemyController)
@@ -657,19 +660,6 @@ void AEnemy::Die()
 		);
 
 		EnemyController->StopMovement();
-	}
-}
-
-void AEnemy::UpdatePlayerKillCounter(APawn* Shooter)
-{
-	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(Shooter) : VRShooterCharacter;
-
-	// Updating the KillCounter in the Character class
-	if (VRShooterCharacter &&
-		!bKillCounterUpdated)
-	{
-		VRShooterCharacter->UpdateKillCounter(1);
-		bKillCounterUpdated = true;
 	}
 }
 
@@ -687,6 +677,37 @@ void AEnemy::RagdollStart()
 	ActorForwardVector.Normalize(0.0001f);
 
 	GetMesh()->AddImpulseAtLocation(ActorForwardVector * -7500.f, GetActorLocation(), FName("spine_02"));*/
+}
+
+void AEnemy::StartSlowMotion()
+{
+	GetWorldTimerManager().SetTimer(
+		SlowMotionResetTimer,
+		this,
+		&AEnemy::StopSlowMotion,
+		SlowMotionResetTime
+	);
+
+	UGameplayStatics::SetGlobalTimeDilation(this, 0.25f);
+}
+
+void AEnemy::StopSlowMotion()
+{
+	UGameplayStatics::SetGlobalTimeDilation(this, 1.f);
+	FinishDeath();
+}
+
+void AEnemy::UpdatePlayerKillCounter(APawn* Shooter)
+{
+	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(Shooter) : VRShooterCharacter;
+
+	// Updating the KillCounter in the Character class
+	if (VRShooterCharacter &&
+		!bKillCounterUpdated)
+	{
+		VRShooterCharacter->UpdateKillCounter(1);
+		bKillCounterUpdated = true;
+	}
 }
 
 void AEnemy::FinishDeath()
@@ -708,7 +729,7 @@ void AEnemy::DestroyEnemy()
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			this,
 			DeathNiagara,
-			GetActorLocation(),
+			GetMesh()->GetComponentLocation(),
 			GetActorRotation()
 		);
 	}
