@@ -72,6 +72,7 @@ private:
 	void ReloadButtonPressed();
 	void SelectButtonPressed();
 	void SelectButtonReleased();
+	void XButtonPressed();
 	void FKeyPressed();
 	void OneKeyPressed();
 	void TwoKeyPressed();

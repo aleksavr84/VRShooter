@@ -153,6 +153,12 @@ void AEnemy::Tick(float DeltaTime)
 			RotateWidgetToPlayer(HealthBar, VRShooterCharacter->GetActorLocation());
 		}
 	}
+
+	if (bShouldRotateToPlayer &&
+		!bDying)
+	{
+		RotateToPlayer(DeltaTime);
+	}
 }
 
 void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -165,16 +171,16 @@ void AEnemy::OnAgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 {
 	if (OtherActor)
 	{
-		auto Character = Cast<AVRShooterCharacter>(OtherActor);
+		VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 
-		if (Character &&
+		if (VRShooterCharacter &&
 			EnemyController &&
 			EnemyController->GetBlackboardComponent())
 		{
 			// Set the value of the TargetBlackboardKey
 			EnemyController->GetBlackboardComponent()->SetValueAsObject(
 				TEXT("Target"), 
-				Character
+				VRShooterCharacter
 			);
 		}
 	}
@@ -184,9 +190,9 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 {
 	if (OtherActor == nullptr) return;
 
-	auto ShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 
-	if (ShooterCharacter)
+	if (VRShooterCharacter)
 	{
 		bInAttackRange = true;
 
@@ -254,14 +260,33 @@ FName AEnemy::GetAttackSectionName()
 	return SectionName;
 }
 
+void AEnemy::ToggleRotateToPlayer(bool bRotate)
+{
+	bShouldRotateToPlayer = bRotate;
+}
+
+void AEnemy::RotateToPlayer(float DeltaTime)
+{
+	if (VRShooterCharacter)
+	{
+		// Target direction
+		FVector PlayerLocation = VRShooterCharacter->GetActorLocation();
+		// Enemy LookAtDirektion
+		//FVector EnemyLookAtDirection = GetActorLocation() * GetActorForwardVector().Normalize();
+		FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(GetActorLocation(), PlayerLocation);
+
+	  SetActorRotation(FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, RotationSpeed));
+	}
+}
+
 
 void AEnemy::OnCombatRangeSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (OtherActor == nullptr) return;
 
-	auto ShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 
-	if (ShooterCharacter)
+	if (VRShooterCharacter)
 	{
 		bInAttackRange = false;
 
@@ -282,12 +307,12 @@ void AEnemy::ActivateLeftWeapon()
 
 void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
-	auto Character = Cast<AVRShooterCharacter>(OtherActor);
+	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 	
-	if (Character)
+	if (VRShooterCharacter)
 	{
-		DoDamage(Character);
-		SpawnBloodParticles(Character, LeftWeaponSocket);
+		DoDamage(VRShooterCharacter);
+		SpawnBloodParticles(VRShooterCharacter, LeftWeaponSocket);
 	}
 }
 
@@ -303,12 +328,12 @@ void AEnemy::ActivateRightWeapon()
 
 void AEnemy::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
-	auto Character = Cast<AVRShooterCharacter>(OtherActor);
+	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 
-	if (Character)
+	if (VRShooterCharacter)
 	{
-		DoDamage(Character);
-		SpawnBloodParticles(Character, RightWeaponSocket);
+		DoDamage(VRShooterCharacter);
+		SpawnBloodParticles(VRShooterCharacter, RightWeaponSocket);
 	}
 }
 
@@ -597,6 +622,9 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 {
 	if (!bDying)
 	{
+		// Stop rotation to player
+		ToggleRotateToPlayer(false);
+
 		// Set the target blackboard key to agro the character
 		if (EnemyController)
 		{

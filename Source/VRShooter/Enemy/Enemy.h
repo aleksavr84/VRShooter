@@ -53,6 +53,11 @@ protected:
 	void DestroyEnemy();
 
 	UFUNCTION(BlueprintCallable)
+	void ToggleRotateToPlayer(bool bRotate);
+
+	void RotateToPlayer(float DeltaTime);
+
+	UFUNCTION(BlueprintCallable)
 	void PlayAttackMontage(FName Section, float PlayRate = 1.0f);
 
 	UFUNCTION(BlueprintPure)
@@ -259,6 +264,11 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
 	bool bCanAttack = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float RotationSpeed = 10.f;
+
+	bool bShouldRotateToPlayer = false;
 
 	FTimerHandle AttackWaitTimer;
 

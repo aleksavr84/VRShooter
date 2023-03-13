@@ -658,6 +658,8 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction(TEXT("5Key"), IE_Pressed, this, &AVRShooterCharacter::FiveKeyPressed);
 
 	PlayerInputComponent->BindAxis(TEXT("SwitchInventoryItem"), this, &AVRShooterCharacter::SwitchInventoryItem);
+
+	PlayerInputComponent->BindAction(TEXT("XButton"), IE_Pressed, this, &AVRShooterCharacter::XButtonPressed);
 }
 
 void AVRShooterCharacter::MoveForward(float value)
@@ -763,6 +765,12 @@ void AVRShooterCharacter::SelectButtonPressed()
 void AVRShooterCharacter::SelectButtonReleased()
 {
 
+}
+
+void AVRShooterCharacter::XButtonPressed()
+{
+	// Restart the level
+	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
 }
 
 void AVRShooterCharacter::FKeyPressed()
