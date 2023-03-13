@@ -1,6 +1,6 @@
 #include "VRHUD.h"
 #include "Components/WidgetComponent.h"
-#include "VRShooterCharacter.h"
+#include "VRShooter/Character/VRShooterCharacter.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"

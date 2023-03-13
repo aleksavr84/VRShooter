@@ -2,7 +2,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/SphereComponent.h"
-#include "VRShooterCharacter.h"
+#include "VRShooter/Character/VRShooterCharacter.h"
 
 AAmmo::AAmmo()
 {

@@ -1,11 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Spawner.h"
-#include "PickupSpawner.generated.h"
+#include "VRShooter/Actors/Spawner.h"
+#include "EnemySpawner.generated.h"
 
 UCLASS()
-class VRSHOOTER_API APickupSpawner : public ASpawner
+class VRSHOOTER_API AEnemySpawner : public ASpawner
 {
 	GENERATED_BODY()
 
@@ -14,10 +14,10 @@ public:
 
 protected:
 	UPROPERTY(EditAnywhere)
-	TArray<TSubclassOf<class AItem>> ItemClasses;
+	TArray<TSubclassOf<class AEnemy>> EnemyClasses;
 
 	UPROPERTY()
-	AItem* SpawnedItem;
+	AEnemy* SpawnedEnemy;
 
 	virtual void StartSpawnTimer(AActor* DestroyedActor) override;
 };

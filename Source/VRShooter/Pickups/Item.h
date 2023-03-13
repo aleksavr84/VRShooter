@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
-#include "Types.h"
+#include "VRShooter/Weapon/Types.h"
 #include "Item.generated.h"
 
 USTRUCT(BlueprintType)

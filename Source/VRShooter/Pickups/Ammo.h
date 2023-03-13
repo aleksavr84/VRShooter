@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Item.h"
-#include "Types.h"
+#include "VRShooter/Weapon/Types.h"
 #include "Ammo.generated.h"
 
 UCLASS()

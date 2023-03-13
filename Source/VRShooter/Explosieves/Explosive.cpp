@@ -7,7 +7,7 @@
 #include "GameFramework/Controller.h"
 #include "Camera/CameraShakeBase.h"
 #include "TimerManager.h"
-#include "Enemy.h"
+#include "VRShooter/Enemy/Enemy.h"
 #include "NiagaraFunctionLibrary.h"
 
 AExplosive::AExplosive()

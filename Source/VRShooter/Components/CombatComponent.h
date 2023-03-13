@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Types.h"
+#include "VRShooter/Weapon/Types.h"
 #include "CombatComponent.generated.h"
 
 UENUM(BlueprintType)

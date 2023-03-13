@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "BulletHitInterface.h"
+#include "VRShooter/Interfaces/BulletHitInterface.h"
 #include "Explosive.generated.h"
 
 UCLASS()

@@ -11,8 +11,4 @@ class VRSHOOTER_API AProjectileWeapon : public AWeapon
 
 public:
 	void Fire(const FVector& HitTarget) override;
-
-//private:
-//	UPROPERTY(EditAnywhere)
-//	TSubclassOf<class AProjectile> ProjectileClass;
 };

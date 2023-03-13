@@ -4,7 +4,6 @@
 #include "VRShooterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-//#include "Components/WidgetComponent.h"
 
 AHandController::AHandController()
 {

@@ -1,8 +1,8 @@
-#include "WidgetActor.h"
+#include "VRShooter/Actors/WidgetActor.h"
 #include "Components/WidgetComponent.h"
 #include "Blueprint/UserWidget.h"
-#include "VRShooterCharacter.h"
-#include "HitTextWidget.h"
+#include "VRShooter/Character/VRShooterCharacter.h"
+#include "VRShooter/HUD/HitTextWidget.h"
 
 AWidgetActor::AWidgetActor()
 {

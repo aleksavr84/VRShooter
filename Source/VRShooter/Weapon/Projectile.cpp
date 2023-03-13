@@ -6,7 +6,7 @@
 #include "Sound/SoundCue.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
-#include "VRShooterCharacter.h"
+#include "VRShooter/Character/VRShooterCharacter.h"
 #include "Camera/CameraShakeBase.h"
 
 AProjectile::AProjectile()

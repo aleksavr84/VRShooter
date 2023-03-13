@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Item.h"
+#include "VRShooter/Pickups/Item.h"
 #include "Types.h"
 #include "Engine/DataTable.h"
 #include "Weapon.generated.h"

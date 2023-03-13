@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "BulletHitInterface.h"
+#include "VRShooter/Interfaces/BulletHitInterface.h"
 #include "Enemy.generated.h"
 
 UCLASS()
