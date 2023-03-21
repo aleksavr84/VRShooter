@@ -18,6 +18,8 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AddHitReactImpulse(FVector Impulse, FVector HitLocation, FName Bone, bool bAddImpulse);
 
+	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
+
 	UFUNCTION(BlueprintCallable)
 	void SetStunned(bool Stunned);
 
@@ -42,7 +44,6 @@ protected:
 	virtual void BeginPlay() override;
 
 	void Die();
-	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
 	void ResetHitReactTimer();
 	void ResetCanAttack();
 
@@ -234,8 +235,16 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
 	bool bStunned = false;
 
+	FTimerHandle StunnResetTimer;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
+	float StunnResetTime = 1.f;
+
+	UFUNCTION()
+	void ResetStunn();
+
 	// Chance of being stunned. 0: no stun chance, 1: 100% stun chance 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
 	float StunChance = .5f;
 
 	// True when in attack range -> Time to Attack!!!
@@ -295,9 +304,33 @@ private:
 	void UpdatePlayerKillCounter(APawn* Shooter);
 	bool bKillCounterUpdated = false;
 
+	// Hitback
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* KnockBackMontage;
+
 	// Ragdoll
-	void RagdollStart();
-	void RagdollEnd();
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Ragdoll, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* GetUpAnimationFaceUp;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Ragdoll, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* GetUpAnimationFaceDown;
+
+	void RagdollUpdate();
+	FVector LastRagdollVelocity;
+	FRotator TargetRagdollRotation;
+	FRotator MashDefaultRotaion;
+	bool bRagdollFaceUp = false;
+	bool bRagdollOnGround = false;
+	bool bIsRagdoll = false;
+	bool bRotateMesh = false;
+	void SetActorLocationDuringRagdoll();
+	void SetActorLocationAndRotationUpdateTarget(FVector NewLocation, FRotator NewRotation, bool bSweep, bool bTeleport);
+
+	FTimerHandle RagdollTimer;
+	float RagdollTime = 2.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float RagdollInterpTime = 1.2f;
 
 	// SlowMotion
 	FTimerHandle SlowMotionResetTimer;
@@ -322,4 +355,16 @@ public:
 	FORCEINLINE FString GetHeadBone() const { return HeadBone; }
 	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
 	FORCEINLINE UParticleSystem* GetBloodParticles() const { return BloodParticles; }
+
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE bool GetIsRagdoll() const { return bIsRagdoll; }
+
+	FORCEINLINE void SetRagdollTime(float Time) { RagdollTime = Time; }
+	void RagdollStart();
+	void RagdollEnd();
+
+	void PlayKnockBackMontage();
+
+	UFUNCTION(BlueprintCallable)
+	void ResetMeshLocationAndRotation();
 };

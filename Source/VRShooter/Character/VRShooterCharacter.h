@@ -100,8 +100,45 @@ private:
 	bool bShouldTraceForItems = false;
 	int8 OverlappedItemCount;
 
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
-	//AItem* TraceHitItemLastFrame;
+	UFUNCTION()
+	void OnRightWeaponOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bfromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION()
+	void OnRightWeaponEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex
+	);
+
+	UFUNCTION(BlueprintCallable)
+	void ActivateRightWeaponCollision();
+
+	UFUNCTION(BlueprintCallable)
+	void DeactivateRightWeaponCollision();
+
+	UFUNCTION()
+	void OnLeftWeaponOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bfromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION(BlueprintCallable)
+	void ActivateLeftWeaponCollision();
+
+	UFUNCTION(BlueprintCallable)
+	void DeactivateLeftWeaponCollision();
 
 	// Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -116,8 +153,19 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	AHandController* RightController;
 
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
-	//class UWidgetComponent* HUDWidget;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName LeftWeaponSocket = TEXT("LeftWeaponBone");
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName RightWeaponSocket = TEXT("RightWeaponBone");
+
+	// Collision volume for the left weapon
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UBoxComponent* LeftWeaponCollision;
+
+	// Collision volume for the right weapon
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UBoxComponent* RightWeaponCollision;
 
 	UPROPERTY(VisibleAnywhere)
 	class USceneComponent* VRRoot;
@@ -175,6 +223,8 @@ private:
 	void ResetEquipSoundTimer();
 
 	// Initialization
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	class USoundClass* MasterSoundClass;
 
 	// CameraShake for TakeDamge
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
@@ -183,6 +233,7 @@ private:
 	// Time to wait before we can play another PickupSound
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	float PickupSoundResetTime = .2f;
+
 	// Time to wait before we can play another EquipSound
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	float EquipSoundResetTime = .2f;
@@ -263,6 +314,7 @@ public:
 	FORCEINLINE void SetIsDead(bool bDead) { bIsDead = bDead; }
 	FORCEINLINE bool GetIsFightingForLife() const { return bIsFightingForLife; }
 	FORCEINLINE void SetIsFightingForLife(bool bFightingForLife) { bIsFightingForLife = bFightingForLife; }
+	FORCEINLINE USoundClass* GetMasterSoundClass() const { return MasterSoundClass; }
 
 	void StartPickupSoundTimer();
 	void StartEquipSoundTimer();
@@ -295,4 +347,6 @@ public:
 	void UpdateKillCounter(int32 KillsToAdd);
 	void UnHighlightInventorySlot();
 	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SetSoundPitch(float NewPitch, float FadeInTime);
 };

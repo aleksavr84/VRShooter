@@ -4,6 +4,7 @@
 #include "VRShooterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "HeadMountedDisplayFunctionLibrary.h"
 
 AHandController::AHandController()
 {
@@ -18,10 +19,6 @@ AHandController::AHandController()
 
 	LeftHandMesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("LeftHandMesh"));
 	LeftHandMesh->SetupAttachment(MotionController);
-
-	//HUDWidget = CreateDefaultSubobject<UWidgetComponent>(FName("HUDWidget"));
-	//HUDWidget->SetupAttachment(RightHandMesh, FName());
-
 }
 
 void AHandController::BeginPlay()
@@ -50,10 +47,31 @@ void AHandController::PairController(AHandController* Controller)
 	OtherController->OtherController = this;
 }
 
+float AHandController::GetControllerMovementSpeed()
+{
+	UHeadMountedDisplayFunctionLibrary::GetControllerTransformForTime(
+		this,
+		0,
+		FName("Right"),
+		1.f,
+		bTimeWasUsed,
+		Orientation,
+		Position,
+		bProvidedVelocity,
+		LinearVelocity,
+		bProvidedAngularVelocity,
+		AngularVelocity,
+		bProvidedLinearAcceleration,
+		LinearAcceleration
+	);
+
+	return LinearVelocity.Length();
+}
+
 void AHandController::ActorBeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
 {
 	bool bNewCanClimb = CanClimb();
-
+	
 	if (!bCanClimb && bNewCanClimb)
 	{
 		PlayHapticEffect();

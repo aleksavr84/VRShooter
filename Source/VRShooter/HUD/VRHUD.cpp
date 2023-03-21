@@ -61,3 +61,13 @@ void AVRHUD::UpdateHUDLocationAndRotation()
 	}
 }
 
+UUserWidget* AVRHUD::GetHUDUserWidget()
+{
+	if (HUDWidget)
+	{
+		return HUDWidget->GetWidget();
+	}
+
+	return nullptr;
+}
+

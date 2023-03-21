@@ -71,18 +71,9 @@ void AExplosive::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter,
 
 	for (auto Actor : OverlappingActors)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("Actor damaged by explosive: %s"), *Actor->GetName());
-
 		if (bIsSlowMotion)
 		{
-			StartSlowMotion(Actor);
-			
-			/*AEnemy* Enemy = Cast<AEnemy>(Actor);
-			
-			if (Enemy)
-			{
-				Enemy->SetStunned(true);
-			}*/
+			StartSlowMotion(Actor);			
 		}
 
 		if (bIsCausingDamage)
@@ -94,6 +85,32 @@ void AExplosive::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter,
 				Shooter,
 				UDamageType::StaticClass()
 			);
+		}
+
+		AEnemy* Enemy = Cast<AEnemy>(Actor);
+
+		if (Enemy)
+		{
+			float DistanceToEnemy = (Enemy->GetActorLocation() - GetActorLocation()).Length();
+			
+			FVector Impulse = Enemy->GetActorLocation() - GetActorLocation();
+			Impulse.Normalize();
+
+			// Calculate Falloff
+			// radius beyond which full falloff happens
+			const float FalloffRadius = OverlapSphere->GetScaledSphereRadius();
+			// strength of the falloff effect
+			const float FalloffExponent = 2.f;
+
+			float Fraction = DistanceToEnemy / FalloffRadius;
+			// clamp to ensure 0-1 range
+			Fraction = FMath::Clamp(Fraction, 0.1f, 1.f);
+
+			//float FalloffFactor = FMath::Pow(1 - Fraction, FalloffExponent);
+			Impulse *= Fraction * 7'000.f;
+			Enemy->AddHitReactImpulse(Impulse, Enemy->GetActorLocation(), FName("pelvis"), true);
+			Enemy->SetRagdollTime(FMath::FRandRange(2.5f, 5.0f) * Fraction);
+			Enemy->RagdollStart();
 		}
 	}
 

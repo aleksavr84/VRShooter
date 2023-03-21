@@ -186,9 +186,6 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float HitCounterResetTime = 5.f;
 
-	void StartHitCounterTimer();
-	void ClearHitCounterTimer();
-
 	// HitMultiplier
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
 	int32 HitMultiplier = 1;
@@ -202,16 +199,37 @@ private:
 	void StartHitMultiplierTimer();
 	void ClearHitMultiplierTimer();
 
+	// Widgets
+	class AWidgetActor* SpawnWidgetActor(TSubclassOf<class AWidgetActor> WidgetActorClass, FVector LocationOffset);
+	void ShowHideWidget(AWidgetActor* Widget, bool bShouldShow);
+
+	// Announcements
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	TSubclassOf<AWidgetActor> AnnouncementActorClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	AWidgetActor* AnnouncementWidgetActor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	FVector AnnouncementWidgetLocationOffset = FVector(100.f, -50.f, 0.f);
+
+	// Fight for your life:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
+	FString FightForYourLifeText = TEXT("Fight for your life bitch!");
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	USoundCue* FightForYourLifeSurviveSound;
+
 	// KillCounter
 	// Announcements - KillCounter
 	UPROPERTY(EditDefaultsOnly, Category = Initialization)
-	TSubclassOf<class AWidgetActor> KillCounterWidgetActorClass;
+	TSubclassOf<AWidgetActor> KillCounterWidgetActorClass;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
-	class AWidgetActor* KillCounterWidgetActor;
+	AWidgetActor* KillCounterWidgetActor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
-	FVector KillCounterLocationOffset = FVector(100.f, 75.f, 0.f);
+	FVector KillCounterLocationOffset = FVector(100.f, 50.f, 0.f);
 
 	// Important!!! the first array element should be an empty text!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
@@ -230,8 +248,7 @@ private:
 	float KillCounterResetTime = 5.f;
 
 	void StartKillCounterTimer();
-	void SpawnKillCounterWidget();
-	void ShowHideKillCounterWidget(bool ShouldShow);
+
 	// Generate KillCounterText and update the KillCounterWidgetActor
 	void GenerateKillCounterText(int32 Kills);
 	

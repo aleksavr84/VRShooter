@@ -21,7 +21,7 @@ public:
 
 private:
 	// Default sub object
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
 	UMotionControllerComponent* MotionController;
 
 	class AVRShooterCharacter* PlayerCharacter;
@@ -48,6 +48,18 @@ private:
 
 	void SetMovementMode(EMovementMode Mode);
 
+	// ControllerTransform
+	bool bTimeWasUsed;
+	FRotator Orientation;
+	FVector Position;
+	bool bProvidedVelocity;
+	FVector LinearVelocity;
+	bool bProvidedAngularVelocity;
+	FVector AngularVelocity;
+	bool bProvidedLinearAcceleration;
+	FVector LinearAcceleration;
+	bool bReturnValue;
+
 private:
 	// Components
 	UPROPERTY(EditAnywhere, Category = Initialization)
@@ -69,7 +81,7 @@ public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))
 	USkeletalMeshComponent* GetLeftHandMesh() { return LeftHandMesh; }
 
-	//UWidgetComponent* GetHUDWidget() { return HUDWidget; }
+	FORCEINLINE UMotionControllerComponent* GetMotionController() const { return MotionController; }
 	
 	void PairController(AHandController* Controller);
 
@@ -77,4 +89,6 @@ public:
 	void Release();
 
 	void PlayHapticEffect();
+
+	float GetControllerMovementSpeed();
 };

@@ -30,7 +30,7 @@ AItem::AItem()
 void AItem::OnConstruction(const FTransform& Transform)
 {
 	
-	UE_LOG(LogTemp, Warning, TEXT("OnConstruction"));
+	/*UE_LOG(LogTemp, Warning, TEXT("OnConstruction"));*/
 	// Load the data in the ItemRarity DataTable
 
 	// Path to the Item Rarity DataTable
@@ -39,7 +39,7 @@ void AItem::OnConstruction(const FTransform& Transform)
 	
 	if (RarityTableObject)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("RarityTableObject"));
+		/*UE_LOG(LogTemp, Warning, TEXT("RarityTableObject"));*/
 		FItemRarityTable* RarityRow = nullptr;
 		switch (ItemRarity)
 		{
@@ -66,7 +66,7 @@ void AItem::OnConstruction(const FTransform& Transform)
 
 		if (RarityRow)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("RarityRow"));
+			/*UE_LOG(LogTemp, Warning, TEXT("RarityRow"));*/
 			GlowColor = RarityRow->GlowColor;
 			LightColor = RarityRow->LightColor;
 			DarkColor = RarityRow->DarkColor;

@@ -18,6 +18,8 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
 #include "VRShooter/Weapon/Types.h"
+#include "VRShooter/HUD/VRHUD.h"
+#include "VRShooter/HUD/AnnouncementWidget.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -29,7 +31,8 @@ UCombatComponent::UCombatComponent()
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	SpawnKillCounterWidget();
+	AnnouncementWidgetActor = SpawnWidgetActor(AnnouncementActorClass, AnnouncementWidgetLocationOffset);
+	KillCounterWidgetActor = SpawnWidgetActor(KillCounterWidgetActorClass, KillCounterLocationOffset);
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -39,25 +42,38 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	if (Character->GetIsFightingForLife())
 	{
 		FightForYourLifeTimeRemaining = Character->GetWorldTimerManager().GetTimerRemaining(FightForYourLifeTimer);
-		UE_LOG(LogTemp, Error, TEXT("%f"), FightForYourLifeTimeRemaining);
-		UE_LOG(LogTemp, Error, TEXT("%f"), (FightForYourLifeTimeRemaining / FightForYourLifeTime) );
 	}
 }
 
-void UCombatComponent::SpawnKillCounterWidget()
+AWidgetActor* UCombatComponent::SpawnWidgetActor(TSubclassOf<class AWidgetActor> WidgetActorClass, FVector LocationOffset)
 {
-	if (KillCounterWidgetActorClass &&
+	if (WidgetActorClass &&
 		Character &&
 		Character->GetCameraComponent())
 	{
-		//// Spawning KillCounterWidget
 		FActorSpawnParameters SpawnParam;
 		SpawnParam.Instigator = Character;
-		KillCounterWidgetActor = Character->GetWorld()->SpawnActor<AWidgetActor>(KillCounterWidgetActorClass, SpawnParam);
-		KillCounterWidgetActor->AttachToComponent(Character->GetCameraComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-		KillCounterWidgetActor->SetOwner(Character);
-		KillCounterWidgetActor->SetActorHiddenInGame(true);
-		KillCounterWidgetActor->AddActorWorldOffset(KillCounterLocationOffset);
+		AWidgetActor* WidgetActor = Character->GetWorld()->SpawnActor<AWidgetActor>(WidgetActorClass, SpawnParam);
+		WidgetActor->AttachToComponent(Character->GetCameraComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+		WidgetActor->SetShooterCharacter(Character);
+		WidgetActor->SetActorHiddenInGame(true);
+		WidgetActor->AddActorWorldOffset(LocationOffset);
+
+		return WidgetActor;
+	}
+	return nullptr;
+}
+
+void UCombatComponent::ShowHideWidget(AWidgetActor* Widget, bool bShouldShow)
+{
+	if (Widget &&
+		bShouldShow)
+	{
+		Widget->SetActorHiddenInGame(false);
+	}
+	else if (Widget && !bShouldShow)
+	{
+		Widget->SetActorHiddenInGame(true);
 	}
 }
 
@@ -331,7 +347,7 @@ void UCombatComponent::SendBullet()
 			const FQuat Rotation{ SocketTransform.GetRotation() };
 			const FVector RotationAxis{ Rotation.GetAxisX() };
 			const FVector End{ Start + RotationAxis * 50'000.f };
-			const FVector BoneBreakImpulse{ Start + RotationAxis * 100.f };
+			FVector BoneBreakImpulse{ Start };
 
 			BeamEndPoint = End ;
 
@@ -341,11 +357,6 @@ void UCombatComponent::SendBullet()
 				End,
 				ECollisionChannel::ECC_Visibility
 			);
-
-			/*if (EquippedWeapon->GetFireType() == EFireType::EFT_Projectile)
-			{
-				EquippedWeapon->Fire(FireHit.Location);
-			}*/
 
 			if (FireHit.bBlockingHit)
 			{
@@ -465,7 +476,6 @@ void UCombatComponent::GenerateKillCounterText(int32 Kills)
 	int32 KillTextNumber = 0;
 
 	if (KillTexts.Num() >= 0 &&
-		KillCounterWidgetActorClass &&
 		KillCounterWidgetActor)
 	{
 		if (std::fmod(Kills / KillTextSeps, 1.0) == 0)
@@ -478,21 +488,8 @@ void UCombatComponent::GenerateKillCounterText(int32 Kills)
 			}
 			
 			KillCounterWidgetActor->SetTextAndStartAnimation(KillTexts[KillTextNumber], true);
-			ShowHideKillCounterWidget(true);
+			ShowHideWidget(KillCounterWidgetActor, true);
 		}
-	}
-}
-
-void UCombatComponent::ShowHideKillCounterWidget(bool ShouldShow)
-{
-	if (KillCounterWidgetActor &&
-		ShouldShow)
-	{
-		KillCounterWidgetActor->SetActorHiddenInGame(false);
-	}
-	else if (KillCounterWidgetActor && !ShouldShow)
-	{
-		KillCounterWidgetActor->SetActorHiddenInGame(true);
 	}
 }
 
@@ -512,7 +509,7 @@ void UCombatComponent::StartKillCounterTimer()
 void UCombatComponent::ResetKillCounter()
 {
 	KillCounter = 0;
-	ShowHideKillCounterWidget(false);
+	ShowHideWidget(KillCounterWidgetActor, false);
 }
 
 void UCombatComponent::StartHitMultiplierTimer()
@@ -647,8 +644,14 @@ void UCombatComponent::FightForYourLife()
 		Character->SetIsFightingForLife(true);
 		FightForYourLifeTimerStart();
 		
+		// Sound Filter Effect
+		Character->SetSoundPitch(0.f, FightForYourLifeTime);
+
 		// Screen smooth fade out
 		Character->StartFade(0.f, 1.f, FightForYourLifeTime);
+		
+		ShowHideWidget(AnnouncementWidgetActor, true);
+		AnnouncementWidgetActor->SetTextAndStartAnimation(FightForYourLifeText, true);
 	}
 }
 
@@ -678,8 +681,14 @@ void UCombatComponent::FightForYourLifeReset()
 	Character->SetIsDead(false);
 	Health += HealtAfterSurvive;
 	Character->StartFade(1.f, 0.f, 0.1f);
-	// TODO: Play sound
+	Character->SetSoundPitch(1.f, 0.5f);
+	
+	ShowHideWidget(AnnouncementWidgetActor, false);
 
+	if (FightForYourLifeSurviveSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FightForYourLifeSurviveSound);
+	}
 }
 
 bool UCombatComponent::WeaponHasAmmo()

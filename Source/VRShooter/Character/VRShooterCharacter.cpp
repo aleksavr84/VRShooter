@@ -21,6 +21,8 @@
 #include "VRShooter/Enemy/EnemyController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Camera/CameraShakeBase.h"
+#include "Components/BoxComponent.h"
+#include "VRShooter/Enemy/Enemy.h"
 
 AVRShooterCharacter::AVRShooterCharacter()
 {
@@ -46,6 +48,13 @@ AVRShooterCharacter::AVRShooterCharacter()
 
 	PostProcessComponent = CreateDefaultSubobject<UPostProcessComponent>(FName("PostProcessComponent"));
 	PostProcessComponent->SetupAttachment(GetRootComponent());
+
+	// Left and Right WeaponCollisionBoxes
+	LeftWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("LeftWeaponCollision"));
+	LeftWeaponCollision->SetupAttachment(BodyMesh, FName("LeftWeaponBone"));
+
+	RightWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("RightWeaponCollision"));
+	RightWeaponCollision->SetupAttachment(BodyMesh, FName("RightWeaponBone"));
 
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 
@@ -143,6 +152,31 @@ void AVRShooterCharacter::BeginPlay()
 
 	// Create FInterpLocation structs for each interp location. Add  to array
 	InitializeInterpLocations();
+
+	// Bind funtions to overlap events for weapon boxes
+	LeftWeaponCollision->OnComponentBeginOverlap.AddDynamic(this, &AVRShooterCharacter::OnLeftWeaponOverlap);
+	RightWeaponCollision->OnComponentBeginOverlap.AddDynamic(this, &AVRShooterCharacter::OnRightWeaponOverlap);
+	RightWeaponCollision->OnComponentEndOverlap.AddDynamic(this, &AVRShooterCharacter::OnRightWeaponEndOverlap);
+
+	// Set collision presets for weapon boxes
+	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	LeftWeaponCollision->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	LeftWeaponCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	LeftWeaponCollision->SetCollisionResponseToChannel(
+		ECollisionChannel::ECC_Pawn,
+		ECollisionResponse::ECR_Overlap
+	);
+
+	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RightWeaponCollision->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	RightWeaponCollision->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	RightWeaponCollision->SetCollisionResponseToChannel(
+		ECollisionChannel::ECC_Pawn,
+		ECollisionResponse::ECR_Overlap
+	);
+
+	ActivateRightWeaponCollision();
+	ActivateLeftWeaponCollision();
 }
 
 void AVRShooterCharacter::Tick(float DeltaTime)
@@ -163,6 +197,97 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 
 	// Calculate FPS
 	FrameRate = 1 / DeltaTime;
+}
+
+void AVRShooterCharacter::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	AEnemy* Enemy = Cast<AEnemy>(OtherActor);
+
+	if (Enemy)
+	{	
+		if (RightController->GetControllerMovementSpeed() > 100.f)
+		{
+			//FVector ForwardVector = Enemy->GetActorForwardVector();
+			//ForwardVector.Normalize();
+			
+	/*		FVector EnemyLocation = Enemy->GetActorLocation();
+			FVector Direction = EnemyLocation - RightController->GetActorLocation();
+			Direction.Normalize();
+
+			FVector Impulse = Direction * RightController->GetControllerMovementSpeed() * 10;*/
+			//UE_LOG(LogTemp, Error, TEXT("We have a hit from RightWeaponCollison Bitch! %f"), Impulse);
+			//Enemy->AddHitReactImpulse(Impulse, Enemy->GetActorLocation(), FName("pelvis"), true);
+			//Enemy->SetRagdollTime(0.5f);
+			//Enemy->RagdollStart();
+			//
+			//Enemy->PlayHitMontage(FName("HitReactBack"));
+
+			IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(Enemy);
+
+			if (BulletHitInterface)
+			{
+				FHitResult HitResult;
+				HitResult.Location = RightController->GetActorLocation();
+				BulletHitInterface->BulletHit_Implementation(HitResult, this, GetController());
+			}
+
+			UGameplayStatics::ApplyDamage(
+				Enemy,
+				5.f,
+				GetController(),
+				this,
+				UDamageType::StaticClass()
+			);
+			
+			//Enemy->GetMesh()->SetSimulatePhysics(true);
+			//FVector EnemyLocationImpulse = FVector(Enemy->GetActorLocation().X * -7500, 0.f, 0.f);
+			//GetMesh()->AddImpulseAtLocation(EnemyLocationImpulse, Enemy->GetActorLocation(), FName("spine_02"));
+			Enemy->PlayKnockBackMontage();
+			//Enemy->RagdollStart();
+		}
+	}
+}
+void AVRShooterCharacter::OnRightWeaponEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	AEnemy* Enemy = Cast<AEnemy>(OtherActor);
+
+	if (Enemy)
+	{
+		//Enemy->RagdollEnd();
+		//Enemy->GetMesh()->SetSimulatePhysics(false);
+	}
+}
+
+
+void AVRShooterCharacter::ActivateRightWeaponCollision()
+{
+	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void AVRShooterCharacter::DeactivateRightWeaponCollision()
+{
+	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AVRShooterCharacter::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	//UE_LOG(LogTemp, Error, TEXT("OnLeftWeaponOverlap"));
+	auto Enemy = Cast<AVRShooterCharacter>(OtherActor);
+
+	if (Enemy)
+	{
+		//UE_LOG(LogTemp, Error, TEXT("We have a hit from LeftWeaponCollison Bitch!"));
+	}
+}
+
+void AVRShooterCharacter::ActivateLeftWeaponCollision()
+{
+	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void AVRShooterCharacter::DeactivateLeftWeaponCollision()
+{
+	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void AVRShooterCharacter::InitializeInterpLocations()
@@ -235,7 +360,6 @@ void AVRShooterCharacter::ShowWeaponHUD()
 		SpawnParam.Instigator = this;
 		VRHUD = GetWorld()->SpawnActor<AVRHUD>(VRHUDClass, SpawnParam);
 		VRHUD->AttachToComponent(Cast<USceneComponent>(RightController), FAttachmentTransformRules::KeepRelativeTransform);
-		//VRHUD->SetHandController(RightController);
 		VRHUD->SetOwner(this);
 
 		bWeaponHUDShowing = true;
@@ -681,7 +805,7 @@ void AVRShooterCharacter::MoveRight(float value)
 void AVRShooterCharacter::BeginTeleport()
 {
 	StartFade(0, 1, TeleportFadeTime);
-
+	UE_LOG(LogTemp, Error, TEXT("BeginTeleport"));
 	FTimerHandle Handle;
 
 	GetWorldTimerManager().SetTimer(
@@ -694,6 +818,7 @@ void AVRShooterCharacter::BeginTeleport()
 
 void AVRShooterCharacter::StartFade(float FromAlpha, float ToAlpha, float FadeTime)
 {
+	UE_LOG(LogTemp, Error, TEXT("StartFade"));
 	PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Controller) : PlayerController;
 
 	if (PlayerController)
@@ -702,7 +827,9 @@ void AVRShooterCharacter::StartFade(float FromAlpha, float ToAlpha, float FadeTi
 			FromAlpha,
 			ToAlpha,
 			FadeTime,
-			FLinearColor::Black
+			FLinearColor::Black,
+			true,
+			true
 		);
 	}
 }
@@ -715,6 +842,7 @@ void AVRShooterCharacter::FinishTeleport()
 	SetActorLocation(Destination);
 
 	StartFade(1, 0, TeleportFadeTime);
+	UE_LOG(LogTemp, Error, TEXT("FinishTeleport"));
 }
 
 void AVRShooterCharacter::FireButtonPressed()
@@ -861,21 +989,21 @@ void AVRShooterCharacter::SwitchInventoryItem(float Value)
 		if (Value > 0.25 &&
 			!bSwitchingInventoryItem)
 		{
+			bSwitchingInventoryItem = true;
 			DesiredSlotIndex = Combat->EquippedWeapon->GetSlotIndex() + 1;
 			DesiredSlotIndex = Combat->Inventory.Num() - 1 > DesiredSlotIndex ? DesiredSlotIndex : Combat->Inventory.Num() - 1;
 			Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), DesiredSlotIndex);
-			bSwitchingInventoryItem = true;
 		}
 		// Switch to Previous Weapon
 		else if (Value < -0.25 &&
 			!bSwitchingInventoryItem)
 		{
+			bSwitchingInventoryItem = true;
 			DesiredSlotIndex = Combat->EquippedWeapon->GetSlotIndex() - 1;
 			DesiredSlotIndex =  DesiredSlotIndex < 0 ? 0 : DesiredSlotIndex;
 			Combat->ExchangeInventoryItems(Combat->EquippedWeapon->GetSlotIndex(), DesiredSlotIndex);
-			bSwitchingInventoryItem = true;
 		}
-		else
+		else if (Value == 0)
 		{
 			bSwitchingInventoryItem = false;
 		}
@@ -884,7 +1012,7 @@ void AVRShooterCharacter::SwitchInventoryItem(float Value)
 
 float AVRShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (bIsFightingForLife) return DamageAmount;
+	if (bIsFightingForLife || bIsDead) return DamageAmount;
 
 	if (Combat)
 	{
@@ -929,6 +1057,11 @@ void AVRShooterCharacter::PlayCameraShake()
 			1000.f
 		);
 	}
+}
+
+// It's implemented in blueprint
+void AVRShooterCharacter::SetSoundPitch_Implementation(float NewPitch, float FadeInTime)
+{
 }
 
 void AVRShooterCharacter::Die()

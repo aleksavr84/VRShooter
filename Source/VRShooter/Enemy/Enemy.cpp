@@ -18,6 +18,8 @@
 #include "GameFramework/Controller.h"
 #include "Components/CapsuleComponent.h"
 #include "Camera/CameraShakeBase.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Components/SceneComponent.h"
 
 AEnemy::AEnemy()
 {
@@ -140,6 +142,8 @@ void AEnemy::BeginPlay()
 
 		EnemyController->RunBehaviorTree(BehaviorTree);
 	}
+	
+	//RagdollStart();
 }
 
 void AEnemy::Tick(float DeltaTime)
@@ -158,6 +162,15 @@ void AEnemy::Tick(float DeltaTime)
 		!bDying)
 	{
 		RotateToPlayer(DeltaTime);
+	}
+
+	if (bIsRagdoll)
+	{
+		RagdollUpdate();
+	}
+	if (bRotateMesh)
+	{
+		GetMesh()->SetRelativeRotation(FMath::RInterpTo(GetMesh()->GetRelativeRotation(), FRotator(0.f, -90.f, 0.f), DeltaTime, RagdollInterpTime));
 	}
 }
 
@@ -307,7 +320,7 @@ void AEnemy::ActivateLeftWeapon()
 
 void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
-	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
 	
 	if (VRShooterCharacter)
 	{
@@ -328,7 +341,7 @@ void AEnemy::ActivateRightWeapon()
 
 void AEnemy::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
-	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
 
 	if (VRShooterCharacter)
 	{
@@ -431,13 +444,7 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 	}
 
 	if (bDying)
-	{
-		//// Updating the C
-		//if (VRShooterCharacter)
-		//{
-		//	VRShooterCharacter->UpdateKillCounter(1);
-		//}
-		
+	{		
 		return;
 	}
 
@@ -496,6 +503,11 @@ void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation, FName Bone)
 		BoneToBreak = TEXT("head");
 	}*/
 
+	Impulse = GetActorLocation() - Impulse;
+	Impulse.Normalize();
+
+	Impulse *= 9'000;
+
 	GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
 	AddHitReactImpulse(Impulse, HitLocation, Bone, false);
 }
@@ -515,7 +527,22 @@ void AEnemy::SetStunned(bool Stunned)
 			TEXT("Stunned"), 
 			Stunned
 		);
+
+		if (bStunned)
+		{
+			GetWorldTimerManager().SetTimer(
+				StunnResetTimer,
+				this,
+				&AEnemy::ResetStunn,
+				StunnResetTime
+			);
+		}
 	}
+}
+
+void AEnemy::ResetStunn()
+{
+	SetStunned(false);
 }
 
 void AEnemy::ShowHitNumber(AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot)
@@ -615,7 +642,7 @@ void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocati
 		FRotator WidgetRotation = HealthBar->GetRelativeRotation();
 		FVector Direction = PlayerLocation - GetActorLocation();
 		FRotator Rotation = FRotationMatrix::MakeFromX(Direction).Rotator();
-		HealthBar->SetWorldRotation(FRotator(WidgetRotation.Pitch, Rotation.Yaw, WidgetRotation.Roll));
+		HealthBar->SetWorldRotation(FRotator(0.f, Rotation.Yaw, 0.f));
 }
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -693,18 +720,210 @@ void AEnemy::Die()
 
 void AEnemy::RagdollStart()
 {
-	EnemyController->StopMovement();
-
+	//EnemyController->StopMovement();
+	bIsRagdoll = true;
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetMesh()->SetAllBodiesBelowSimulatePhysics(FName("pelvis"), true, true);
 	GetMesh()->GetAnimInstance()->StopAllMontages(0.2f);
 
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+
+	if (!bDying)
+	{
+		GetWorldTimerManager().SetTimer(
+			RagdollTimer,
+			this,
+			&AEnemy::RagdollEnd,
+			RagdollTime
+		);
+	}
+
 	/*FVector ActorForwardVector = GetActorForwardVector();
 	ActorForwardVector.Normalize(0.0001f);
 
 	GetMesh()->AddImpulseAtLocation(ActorForwardVector * -7500.f, GetActorLocation(), FName("spine_02"));*/
+}
+
+void AEnemy::RagdollUpdate()
+{
+	// Set the last ragdoll velocity and speed
+	LastRagdollVelocity = GetMesh()->GetPhysicsLinearVelocity(FName("root"));
+	double LastRagdollSpeed = LastRagdollVelocity.Length();
+	
+	// Use the ragdoll velocity to scale the ragdoll's joint strength for physical animation
+	float InSpring = FMath::GetMappedRangeValueClamped<float>(
+		TRange<float>(0.f, 1000.f), 
+		TRange<float>(0.f, 25'000.f),
+		LastRagdollSpeed
+	);
+	
+	GetMesh()->SetAllMotorsAngularDriveParams(
+		InSpring,
+		0.f,
+		0.f,
+		false	
+	);
+	
+	// Disable gravity if falling faster than -4000 to prevent
+	// continual acceleration.
+	// This also prevents the ragdoll from going through the floor
+	//GetMesh()->SetEnableGravity(LastRagdollVelocity.Z > -4000 ? true : false);
+	
+	// Update the actor location to follow the ragdoll
+	SetActorLocationDuringRagdoll();
+}
+
+void AEnemy::SetActorLocationDuringRagdoll()
+{
+	// Set the pelvis as the target location
+	FVector TargetRagdollLocation;
+	
+	TargetRagdollLocation = GetMesh()->GetSocketLocation(FName("pelvis"));
+
+	// Determine wether the ragdoll is facing up or down and set the target rotation accordingly
+	FRotator PelvisRotation = GetMesh()->GetSocketRotation(FName("pelvis"));
+	
+	//GetMesh()->GetSocketWorldLocationAndRotation(FName("pelvis"), TargetRagdollLocation, PelvisRotation);//GetSocketRotation(FName("pelvis"));
+
+	// FacingUp
+	if (PelvisRotation.Roll < 0.f)
+	{
+		bRagdollFaceUp = true;
+	}
+	else
+	{
+		bRagdollFaceUp = false;
+	}
+	if (bRagdollFaceUp)
+	{
+		TargetRagdollRotation = FRotator(0.f, PelvisRotation.Yaw - 180.f, 0.f);
+	}
+	else
+	{
+		TargetRagdollRotation = FRotator(0.f, PelvisRotation.Yaw, 0.f);
+	}
+	
+	// Trace downwards from the target location to offset the target location, 
+	// preventing the lower half of the capsule from going through the floor 
+	// when the ragdoll is laying on the ground
+	float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	FVector TraceEnd = FVector(
+		TargetRagdollLocation.X, 
+		TargetRagdollLocation.Y, 
+		TargetRagdollLocation.Z - CapsuleHalfHeight
+	);
+
+	FHitResult OutHitResult;
+
+	GetWorld()->LineTraceSingleByChannel(
+		OutHitResult,
+		TargetRagdollLocation,
+		TraceEnd,
+		ECollisionChannel::ECC_Visibility
+	);
+
+	if (OutHitResult.bBlockingHit)
+	{
+		bRagdollOnGround = true;
+		float LocationOffset = CapsuleHalfHeight - FMath::Abs((OutHitResult.ImpactPoint.Z - OutHitResult.TraceStart.Z));
+
+		FVector NewLocation = FVector(
+				TargetRagdollLocation.X,
+				TargetRagdollLocation.Y,
+				TargetRagdollLocation.Z - LocationOffset + 2.f
+		);
+		
+		//SetActorLocation(NewLocation);
+		SetActorLocationAndRotationUpdateTarget(NewLocation, TargetRagdollRotation, false, false);
+	}
+	else
+	{
+		bRagdollOnGround = true;
+		float LocationOffset = CapsuleHalfHeight - FMath::Abs((OutHitResult.ImpactPoint.Z - OutHitResult.TraceStart.Z));
+
+		FVector NewLocation = FVector(
+			TargetRagdollLocation.X,
+			TargetRagdollLocation.Y,
+			TargetRagdollLocation.Z - LocationOffset + 2.f
+		);
+		//SetActorLocation(NewLocation);
+		SetActorLocationAndRotationUpdateTarget(NewLocation, TargetRagdollRotation, false, false);
+	}
+}
+
+void AEnemy::SetActorLocationAndRotationUpdateTarget(FVector NewLocation, FRotator NewRotation, bool bSweep, bool bTeleport)
+{
+	//TargetRagdollRotation = NewRotation;
+	SetActorLocationAndRotation(NewLocation, TargetRagdollRotation);
+}
+
+void AEnemy::RagdollEnd()
+{
+	MashDefaultRotaion = GetMesh()->GetRelativeRotation();
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	// Save a snapshot of the current Ragdoll pose for use in AnimGraph to blend out of the ragdoll
+	if (AnimInstance)
+	{
+		AnimInstance->SavePoseSnapshot(FName("RagdollPose"));
+	}
+
+	if (bRagdollOnGround)
+	{
+		// TODO:
+		// If the ragdoll is on the ground, set the movement mode to walking and play a GetUp animation.
+		if (bRagdollFaceUp)
+		{
+			if (AnimInstance &&
+				GetUpAnimationFaceUp)
+			{
+				AnimInstance->Montage_Play(GetUpAnimationFaceUp, 1.f);
+			}
+		}
+		else
+		{
+			if (AnimInstance &&
+				GetUpAnimationFaceDown)
+			{
+				AnimInstance->Montage_Play(GetUpAnimationFaceDown, 1.f);
+			}
+		}
+	}
+	else
+	{
+		// TODO:
+		// If not, set the movement mode to falling and update the character movement velocity to match the
+		// last ragdoll velocity
+	}
+
+
+	// Re-Enable capsule collision and disable physics simulation on the mesh
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_Pawn);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	GetMesh()->SetAllBodiesSimulatePhysics(false);
+	GetMesh()->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::KeepWorldTransform);
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+}
+
+void AEnemy::ResetMeshLocationAndRotation()
+{
+	bRotateMesh = true;
+	GetMesh()->SetRelativeLocation(FVector(0.f, 0.f, -90.f));
+	/*GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));*/
+	bIsRagdoll = false;
+}
+
+void AEnemy::PlayKnockBackMontage()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	if (AnimInstance &&
+		KnockBackMontage)
+	{
+		AnimInstance->Montage_Play(KnockBackMontage, 1.f);
+	}
 }
 
 void AEnemy::StartSlowMotion()

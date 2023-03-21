@@ -3,6 +3,7 @@
 #include "Blueprint/UserWidget.h"
 #include "VRShooter/Character/VRShooterCharacter.h"
 #include "VRShooter/HUD/HitTextWidget.h"
+#include "Camera/CameraComponent.h"
 
 AWidgetActor::AWidgetActor()
 {
@@ -40,26 +41,26 @@ void AWidgetActor::Tick(float DeltaTime)
 
 void AWidgetActor::SetTextAndStartAnimation(FString Text, bool bChangeColor)
 {
-	UHitTextWidget* HitTextWidget = Cast<UHitTextWidget>(WidgetComp->GetWidget());
+	UHitTextWidget* TextWidget = Cast<UHitTextWidget>(WidgetComp->GetWidget());
 
-	if (HitTextWidget)
+	if (TextWidget)
 	{
-		// Set HitText
-		if (HitTextWidget->HitText)
+		// Set Text
+		if (TextWidget->HitText)
 		{
-			HitTextWidget->SetDisplayText(Text);
+			TextWidget->SetDisplayText(Text);
 
 			// SetColor if HeadShot
 			if (bChangeColor)
 			{
-				HitTextWidget->SetDisplayTextColor(SecondaryColor);
+				TextWidget->SetDisplayTextColor(SecondaryColor);
 			}
 		}
 		// Start Animation
-		if (HitTextWidget->HitNumberAnim)
+		if (TextWidget->HitNumberAnim)
 		{
-			HitTextWidget->PlayAnimation(
-				HitTextWidget->HitNumberAnim,
+			TextWidget->PlayAnimation(
+				TextWidget->HitNumberAnim,
 				0.f,
 				1
 			);
@@ -69,12 +70,15 @@ void AWidgetActor::SetTextAndStartAnimation(FString Text, bool bChangeColor)
 
 void AWidgetActor::RotateWidgetToPlayer()
 {
+	//UE_LOG(LogTemp, Warning, TEXT("RotateWidgetToPlayer"));
 	if (ShooterCharacter)
 	{
+		//UE_LOG(LogTemp, Warning, TEXT("%s"), *ShooterCharacter->GetName());
+		////UE_LOG(LogTemp, Warning, TEXT("ShooterCharacter"));
 		FRotator WidgetRotation = WidgetComp->GetRelativeRotation();
 		FVector Direction = ShooterCharacter->GetActorLocation() - GetActorLocation();
 		FRotator Rotation = FRotationMatrix::MakeFromX(Direction).Rotator();
-		WidgetComp->SetWorldRotation(FRotator(WidgetRotation.Pitch, Rotation.Yaw, WidgetRotation.Roll));
+		WidgetComp->SetWorldRotation(FRotator(0.f, Rotation.Yaw, 0.f));
 	}
 }
 

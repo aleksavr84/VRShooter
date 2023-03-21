@@ -50,6 +50,6 @@ private:
 
 public:
 	UWidgetComponent* GetHUDWidget() { return HUDWidget; }
-
+	UUserWidget* GetHUDUserWidget();
 	void SetHandController(AHandController* Controller) { HandController = Controller; }
 };
