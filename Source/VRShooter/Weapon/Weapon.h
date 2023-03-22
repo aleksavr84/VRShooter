@@ -82,6 +82,9 @@ struct FWeaponDataTable : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Visual Effects")
 	UParticleSystem* BeamParticles;
 
+	UPROPERTY(EditAnywhere, Category = "Visual Effects")
+	TSubclassOf<UCameraShakeBase> FireCameraShake;
+
 	// SFX
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound Effects")
 	class USoundCue* PickupSound;
@@ -203,6 +206,9 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sound Effects", meta = (AllowPrivateAccess = "true"))
 	class USoundCue* FireSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UCameraShakeBase> FireCameraShake;
 
 	// Name for the clip bone
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bones and Sockets", meta = (AllowPrivateAccess = "true"))

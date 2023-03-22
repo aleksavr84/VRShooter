@@ -229,6 +229,12 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	FRotator WeaponMeshRotation = FRotator(0.f, 0.f, 0.f);
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	float PostProcessEffectTime = 0.25f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
+	FPostProcessSettings PickUpPostProcess;
+
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() { return PickupWidget; }
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }

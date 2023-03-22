@@ -428,6 +428,9 @@ void AItem::StartItemCurve(AVRShooterCharacter* Character, bool bForcePlaySound)
 		const double ItemRotationYaw{ GetActorRotation().Yaw };
 		// Initial Yaw offset between camera and item
 		InterpInitialYawOffset = ItemRotationYaw - CameraRotationYaw;
+
+		// VFX -> PostProcess
+		ShooterCharacter->StartPostProcess(PickUpPostProcess, PostProcessEffectTime);
 	}
 }
 

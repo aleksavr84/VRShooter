@@ -230,6 +230,15 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class UCameraShakeBase> TakeDamageCameraShake;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	FPostProcessSettings FightForYourLifePostProcess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	FPostProcessSettings TakeDamagePostProcess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	float TakeDamagePostProcessTime = 0.05f;
+
 	// Time to wait before we can play another PickupSound
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	float PickupSoundResetTime = .2f;
@@ -302,6 +311,10 @@ private:
 	bool bIsFightingForLife = false;
 	bool bIsDead = false;
 
+	// VFX
+	FTimerHandle PostProcessEffectTimer;
+	FPostProcessSettings CurrentPostProcess;
+
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
 	FORCEINLINE USkeletalMeshComponent* GetBodyMesh() const { return BodyMesh; }
@@ -315,6 +328,7 @@ public:
 	FORCEINLINE bool GetIsFightingForLife() const { return bIsFightingForLife; }
 	FORCEINLINE void SetIsFightingForLife(bool bFightingForLife) { bIsFightingForLife = bFightingForLife; }
 	FORCEINLINE USoundClass* GetMasterSoundClass() const { return MasterSoundClass; }
+	FORCEINLINE FPostProcessSettings GetFightForYourLifePostProcess() const { return FightForYourLifePostProcess; }
 
 	void StartPickupSoundTimer();
 	void StartEquipSoundTimer();
@@ -349,4 +363,10 @@ public:
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetSoundPitch(float NewPitch, float FadeInTime);
+
+	void StartPostProcess(FPostProcessSettings PostProcessSettings, float PostProcessEffectTime);
+	void ResetPostProcess();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SetResetCameraPostProcessDetails(FPostProcessSettings PostProcessSettings, bool bSet);
 };

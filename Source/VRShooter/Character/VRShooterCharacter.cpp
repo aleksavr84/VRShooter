@@ -198,57 +198,20 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 	// Calculate FPS
 	FrameRate = 1 / DeltaTime;
 }
-
+// TODO: Move to MotionController class
 void AVRShooterCharacter::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
-	AEnemy* Enemy = Cast<AEnemy>(OtherActor);
-
-	if (Enemy)
-	{	
-		if (RightController->GetControllerMovementSpeed() > 100.f)
-		{
-			//FVector ForwardVector = Enemy->GetActorForwardVector();
-			//ForwardVector.Normalize();
-			
-	/*		FVector EnemyLocation = Enemy->GetActorLocation();
-			FVector Direction = EnemyLocation - RightController->GetActorLocation();
-			Direction.Normalize();
-
-			FVector Impulse = Direction * RightController->GetControllerMovementSpeed() * 10;*/
-			//UE_LOG(LogTemp, Error, TEXT("We have a hit from RightWeaponCollison Bitch! %f"), Impulse);
-			//Enemy->AddHitReactImpulse(Impulse, Enemy->GetActorLocation(), FName("pelvis"), true);
-			//Enemy->SetRagdollTime(0.5f);
-			//Enemy->RagdollStart();
-			//
-			//Enemy->PlayHitMontage(FName("HitReactBack"));
-
-			IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(Enemy);
-
-			if (BulletHitInterface)
-			{
-				FHitResult HitResult;
-				HitResult.Location = RightController->GetActorLocation();
-				BulletHitInterface->BulletHit_Implementation(HitResult, this, GetController());
-			}
-
-			UGameplayStatics::ApplyDamage(
-				Enemy,
-				5.f,
-				GetController(),
-				this,
-				UDamageType::StaticClass()
-			);
-			
-			//Enemy->GetMesh()->SetSimulatePhysics(true);
-			//FVector EnemyLocationImpulse = FVector(Enemy->GetActorLocation().X * -7500, 0.f, 0.f);
-			//GetMesh()->AddImpulseAtLocation(EnemyLocationImpulse, Enemy->GetActorLocation(), FName("spine_02"));
-			Enemy->PlayKnockBackMontage();
-			//Enemy->RagdollStart();
-		}
+	if (Combat &&
+		RightController)
+	{
+		Combat->MeleeAttack(OtherActor, RightController);
 	}
 }
+
+// TODO: Move to MotionController class
 void AVRShooterCharacter::OnRightWeaponEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	// TODO: Move to CombatComponent
 	AEnemy* Enemy = Cast<AEnemy>(OtherActor);
 
 	if (Enemy)
@@ -258,20 +221,21 @@ void AVRShooterCharacter::OnRightWeaponEndOverlap(UPrimitiveComponent* Overlappe
 	}
 }
 
-
+// TODO: Move to MotionController class
 void AVRShooterCharacter::ActivateRightWeaponCollision()
 {
 	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
+// TODO: Move to MotionController class
 void AVRShooterCharacter::DeactivateRightWeaponCollision()
 {
 	RightWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
+// TODO: Move to MotionController class
 void AVRShooterCharacter::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
-	//UE_LOG(LogTemp, Error, TEXT("OnLeftWeaponOverlap"));
 	auto Enemy = Cast<AVRShooterCharacter>(OtherActor);
 
 	if (Enemy)
@@ -280,11 +244,13 @@ void AVRShooterCharacter::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedCom
 	}
 }
 
+// TODO: Move to MotionController class
 void AVRShooterCharacter::ActivateLeftWeaponCollision()
 {
 	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
+// TODO: Move to MotionController class
 void AVRShooterCharacter::DeactivateLeftWeaponCollision()
 {
 	LeftWeaponCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -1027,19 +993,12 @@ float AVRShooterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Da
 			}
 			
 			EnemyController = Cast<AEnemyController>(EventInstigator);
-
-			/*if (EnemyController)
-			{
-				EnemyController->GetBlackboardComponent()->SetValueAsBool(
-					FName(TEXT("PlayerDead")), 
-					true
-				);
-			}*/
 		}
 		else
 		{
 			PlayCameraShake();
 			Combat->Health -= DamageAmount;
+			StartPostProcess(TakeDamagePostProcess, TakeDamagePostProcessTime);
 		}
 	}	
 	return DamageAmount;
@@ -1059,8 +1018,32 @@ void AVRShooterCharacter::PlayCameraShake()
 	}
 }
 
+void AVRShooterCharacter::StartPostProcess(FPostProcessSettings PostProcessSettings, float PostProcessEffectTime)
+{
+	CurrentPostProcess = PostProcessSettings;
+
+	GetWorldTimerManager().SetTimer(
+		PostProcessEffectTimer,
+		this,
+		&AVRShooterCharacter::ResetPostProcess,
+		PostProcessEffectTime
+	);
+
+	SetResetCameraPostProcessDetails(CurrentPostProcess, true);
+}
+
+void AVRShooterCharacter::ResetPostProcess()
+{
+	SetResetCameraPostProcessDetails(CurrentPostProcess, false);
+}
+
 // It's implemented in blueprint
 void AVRShooterCharacter::SetSoundPitch_Implementation(float NewPitch, float FadeInTime)
+{
+}
+
+// It's implemented in blueprint
+void AVRShooterCharacter::SetResetCameraPostProcessDetails_Implementation(FPostProcessSettings PostProcessSettings, bool bSet)
 {
 }
 

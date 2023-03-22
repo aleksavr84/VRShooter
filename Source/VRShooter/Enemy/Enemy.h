@@ -64,7 +64,7 @@ protected:
 	UFUNCTION(BlueprintPure)
 	FName GetAttackSectionName();
 
-	void DoDamage(class AVRShooterCharacter* Victim);
+	void DoDamage(class AVRShooterCharacter* Victim, bool bRadialDamage = false);
 	void SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName);
 
 private:
@@ -263,6 +263,10 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UNiagaraSystem* DeathNiagara;
 
+	// Sound to play when enemy dies
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	USoundCue* DeathSound;
+
 	UNiagaraSystem* BloodNiagara;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -318,7 +322,7 @@ private:
 	void RagdollUpdate();
 	FVector LastRagdollVelocity;
 	FRotator TargetRagdollRotation;
-	FRotator MashDefaultRotaion;
+	FRotator MeshDefaultRotaion;
 	bool bRagdollFaceUp = false;
 	bool bRagdollOnGround = false;
 	bool bIsRagdoll = false;
@@ -342,6 +346,28 @@ private:
 
 	UFUNCTION()
 	void StopSlowMotion();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bExplosiveEnemy = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float ExplosionRadius = 500.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float ExplosionDamage = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	USoundCue* ExplosionSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UCameraShakeBase> ExplosionCameraShake;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UNiagaraSystem* ExplosionNiagara;
+
+	// ExplosiveEnemy Scream sound -> It's playing from the begining in loop
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	USoundCue* ScreamSound;
 
 public:	
 	virtual void Tick(float DeltaTime) override;

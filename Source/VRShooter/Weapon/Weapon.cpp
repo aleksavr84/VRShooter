@@ -3,6 +3,8 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Casing.h"
+#include "Camera/CameraShakeBase.h"
+#include "Kismet/GameplayStatics.h"
 
 AWeapon::AWeapon() :
 	ThrowWeaponTime(.5f),
@@ -76,7 +78,8 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 			MuzzleFlashNiagara = WeaponDataRow->MuzzleFlashNiagara;
 			ImpactParticles = WeaponDataRow->ImpactParticles;
 			BeamParticles = WeaponDataRow->BeamParticles;
-			
+			FireCameraShake = WeaponDataRow->FireCameraShake;
+
 			//// SFX
 			SetPickupSound(WeaponDataRow->PickupSound);
 			SetEquipSound(WeaponDataRow->EquipSound);
@@ -177,6 +180,17 @@ void AWeapon::Fire(const FVector& HitTarget)
 	if (FireAnimation)
 	{
 		GetItemMesh()->PlayAnimation(FireAnimation, false);
+	}
+
+	if (FireCameraShake)
+	{
+		UGameplayStatics::PlayWorldCameraShake(
+			GetWorld(),
+			FireCameraShake,
+			GetActorLocation(),
+			1000.f,
+			1000.f
+		);
 	}
 
 	if (CasingClass)

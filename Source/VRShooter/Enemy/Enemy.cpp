@@ -143,7 +143,15 @@ void AEnemy::BeginPlay()
 		EnemyController->RunBehaviorTree(BehaviorTree);
 	}
 	
-	//RagdollStart();
+	if (bExplosiveEnemy &&
+		ScreamSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			ScreamSound,
+			GetActorLocation()
+		);
+	}
 }
 
 void AEnemy::Tick(float DeltaTime)
@@ -209,12 +217,21 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 	{
 		bInAttackRange = true;
 
-		if (EnemyController)
+		if (bExplosiveEnemy)
 		{
-			EnemyController->GetBlackboardComponent()->SetValueAsBool(
-				TEXT("InAttackRange"), 
-				true
-			);
+			// Explode
+			DoDamage(VRShooterCharacter, true);
+			Die();
+		}
+		else
+		{
+			if (EnemyController)
+			{
+				EnemyController->GetBlackboardComponent()->SetValueAsBool(
+					TEXT("InAttackRange"),
+					true
+				);
+			}
 		}
 	}
 }
@@ -384,17 +401,65 @@ void AEnemy::SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName)
 	}
 }
 
-void AEnemy::DoDamage(AVRShooterCharacter* Victim)
+void AEnemy::DoDamage(AVRShooterCharacter* Victim, bool bRadialDamage)
 {
 	if (Victim == nullptr) return;
 
-	UGameplayStatics::ApplyDamage(
-		Victim,
-		BaseDamage,
-		EnemyController,
-		this,
-		UDamageType::StaticClass()
-	);
+	if (bRadialDamage)
+	{
+		TArray<AActor*, FDefaultAllocator> ActorsToIgnore;
+
+		UGameplayStatics::ApplyRadialDamage(
+			this,
+			ExplosionDamage,
+			GetActorLocation(),
+			ExplosionRadius,
+			UDamageType::StaticClass(),
+			ActorsToIgnore,
+			this,
+			EnemyController
+		);
+
+		if (ExplosionSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				this,
+				ExplosionSound,
+				GetActorLocation()
+			);
+		}
+
+		if (ExplosionCameraShake)
+		{
+			UGameplayStatics::PlayWorldCameraShake(
+				GetWorld(),
+				ExplosionCameraShake,
+				GetActorLocation(),
+				ExplosionRadius,
+				ExplosionRadius
+			);
+		}
+
+		if (ExplosionNiagara)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				this,
+				ExplosionNiagara,
+				GetActorLocation(),
+				GetActorRotation()
+			);
+		}
+	} 
+	else
+	{
+		UGameplayStatics::ApplyDamage(
+			Victim,
+			BaseDamage,
+			EnemyController,
+			this,
+			UDamageType::StaticClass()
+		);
+	}
 
 	if (Victim->GetMeleeImpactSound())
 	{
@@ -704,7 +769,6 @@ void AEnemy::Die()
 		
 		StartSlowMotion();
 		RagdollStart();
-		//FinishDeath();
 	}
 
 	if (EnemyController)
@@ -720,7 +784,6 @@ void AEnemy::Die()
 
 void AEnemy::RagdollStart()
 {
-	//EnemyController->StopMovement();
 	bIsRagdoll = true;
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
@@ -739,11 +802,6 @@ void AEnemy::RagdollStart()
 			RagdollTime
 		);
 	}
-
-	/*FVector ActorForwardVector = GetActorForwardVector();
-	ActorForwardVector.Normalize(0.0001f);
-
-	GetMesh()->AddImpulseAtLocation(ActorForwardVector * -7500.f, GetActorLocation(), FName("spine_02"));*/
 }
 
 void AEnemy::RagdollUpdate()
@@ -769,7 +827,7 @@ void AEnemy::RagdollUpdate()
 	// Disable gravity if falling faster than -4000 to prevent
 	// continual acceleration.
 	// This also prevents the ragdoll from going through the floor
-	//GetMesh()->SetEnableGravity(LastRagdollVelocity.Z > -4000 ? true : false);
+	GetMesh()->SetEnableGravity(LastRagdollVelocity.Z > -4000 ? true : false);
 	
 	// Update the actor location to follow the ragdoll
 	SetActorLocationDuringRagdoll();
@@ -861,7 +919,7 @@ void AEnemy::SetActorLocationAndRotationUpdateTarget(FVector NewLocation, FRotat
 
 void AEnemy::RagdollEnd()
 {
-	MashDefaultRotaion = GetMesh()->GetRelativeRotation();
+	MeshDefaultRotaion = GetMesh()->GetRelativeRotation();
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	// Save a snapshot of the current Ragdoll pose for use in AnimGraph to blend out of the ragdoll
 	if (AnimInstance)
@@ -989,6 +1047,15 @@ void AEnemy::DestroyEnemy()
 			GetActorLocation(),
 			1000.f,
 			1000.f
+		);
+	}
+
+	if (DeathSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			DeathSound,
+			GetActorLocation()
 		);
 	}
 

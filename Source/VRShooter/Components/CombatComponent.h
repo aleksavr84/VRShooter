@@ -71,6 +71,9 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void ReleaseClip();
 
+	// Melee Attack
+	void MeleeAttack(AActor* OtherActor, class AHandController* HandController);
+
 	// Inventory
 	void ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex);
 	int32 GetEmptyInventorySlot();
@@ -166,8 +169,19 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float MaxHealth = 100.f;
 
+	// Melee Attack
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class USoundCue* MeleeImpactSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MinMeleeAttackDamage = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MaxMeleeAttackDamage = 25.f;
+
+	// CameraShake for MeleeAttack
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UCameraShakeBase> MeleeAttackCameraShake;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UParticleSystem* BloodParticles;
@@ -219,6 +233,13 @@ private:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
 	USoundCue* FightForYourLifeSurviveSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	float SurviveSoundDelay = .5f;
+
+	FTimerHandle SurviveSoundTimer;
+
+	void PlaySurviveSound();
 
 	// KillCounter
 	// Announcements - KillCounter
@@ -291,6 +312,9 @@ private:
 	void FightForYourLifeTimerStart();
 	void FightForYourLifeTimerEnd();
 	void FightForYourLifeReset();
+
+	// VFX
+	void PlayCameraShake();
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))

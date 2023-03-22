@@ -20,6 +20,7 @@
 #include "VRShooter/Weapon/Types.h"
 #include "VRShooter/HUD/VRHUD.h"
 #include "VRShooter/HUD/AnnouncementWidget.h"
+#include "Camera/CameraShakeBase.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -649,6 +650,9 @@ void UCombatComponent::FightForYourLife()
 
 		// Screen smooth fade out
 		Character->StartFade(0.f, 1.f, FightForYourLifeTime);
+
+		// PostProcessEffect
+		Character->StartPostProcess(Character->GetFightForYourLifePostProcess(), FightForYourLifeTime);
 		
 		ShowHideWidget(AnnouncementWidgetActor, true);
 		AnnouncementWidgetActor->SetTextAndStartAnimation(FightForYourLifeText, true);
@@ -682,9 +686,20 @@ void UCombatComponent::FightForYourLifeReset()
 	Health += HealtAfterSurvive;
 	Character->StartFade(1.f, 0.f, 0.1f);
 	Character->SetSoundPitch(1.f, 0.5f);
-	
+	Character->ResetPostProcess();
+
 	ShowHideWidget(AnnouncementWidgetActor, false);
 
+	Character->GetWorldTimerManager().SetTimer(
+		SurviveSoundTimer,
+		this,
+		&UCombatComponent::PlaySurviveSound,
+		SurviveSoundDelay
+	);
+}
+
+void UCombatComponent::PlaySurviveSound()
+{
 	if (FightForYourLifeSurviveSound)
 	{
 		UGameplayStatics::PlaySound2D(this, FightForYourLifeSurviveSound);
@@ -842,3 +857,80 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	return false;
 }
 
+void UCombatComponent::MeleeAttack(AActor* OtherActor, AHandController* HandController)
+{
+	AEnemy* Enemy = Cast<AEnemy>(OtherActor);
+
+	if (Character &&
+		Character->GetController() &&
+		HandController && 
+		Enemy)
+	{
+		if (HandController->GetControllerMovementSpeed() > 100.f)
+		{
+			//FVector ForwardVector = Enemy->GetActorForwardVector();
+			//ForwardVector.Normalize();
+
+	/*		FVector EnemyLocation = Enemy->GetActorLocation();
+			FVector Direction = EnemyLocation - RightController->GetActorLocation();
+			Direction.Normalize();
+
+			FVector Impulse = Direction * RightController->GetControllerMovementSpeed() * 10;*/
+			//UE_LOG(LogTemp, Error, TEXT("We have a hit from RightWeaponCollison Bitch! %f"), Impulse);
+			//Enemy->AddHitReactImpulse(Impulse, Enemy->GetActorLocation(), FName("pelvis"), true);
+			//Enemy->SetRagdollTime(0.5f);
+			//Enemy->RagdollStart();
+			//
+			//Enemy->PlayHitMontage(FName("HitReactBack"));
+
+			IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(Enemy);
+
+			if (BulletHitInterface)
+			{
+				FHitResult HitResult;
+				HitResult.Location = HandController->GetActorLocation();
+				BulletHitInterface->BulletHit_Implementation(HitResult, Character, Character->GetController());
+			}
+
+			UGameplayStatics::ApplyDamage(
+				Enemy,
+				FMath::GetMappedRangeValueClamped(TRange<float>(100.f, 300.f), TRange<float>(MinMeleeAttackDamage, MaxMeleeAttackDamage), HandController->GetControllerMovementSpeed()),
+				Character->GetController(),
+				Character,
+				UDamageType::StaticClass()
+			);
+
+			if (GetMeleeImpactSound())
+			{
+				UGameplayStatics::PlaySoundAtLocation(
+					this,
+					GetMeleeImpactSound(),
+					HandController->GetActorLocation()
+				);
+			}
+
+			PlayCameraShake();
+
+			//Enemy->GetMesh()->SetSimulatePhysics(true);
+			//FVector EnemyLocationImpulse = FVector(Enemy->GetActorLocation().X * -7500, 0.f, 0.f);
+			//GetMesh()->AddImpulseAtLocation(EnemyLocationImpulse, Enemy->GetActorLocation(), FName("spine_02"));
+			Enemy->PlayKnockBackMontage();
+			//Enemy->RagdollStart();
+		}
+	}
+}
+
+void UCombatComponent::PlayCameraShake()
+{
+	if (Character &&
+		MeleeAttackCameraShake)
+	{
+		UGameplayStatics::PlayWorldCameraShake(
+			GetWorld(),
+			MeleeAttackCameraShake,
+			Character->GetActorLocation(),
+			1000.f,
+			1000.f
+		);
+	}
+}
