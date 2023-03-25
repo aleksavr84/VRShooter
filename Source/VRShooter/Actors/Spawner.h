@@ -31,6 +31,13 @@ private:
 	UPROPERTY(EditAnywhere)
 	float SpawnTimeMax = 10.f;
 
+	// Sound to play when hit by bullets
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class USoundCue* SpawnSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bShouldPlayPickupSound = true;
+
 public:	
 	virtual void Tick(float DeltaTime) override;
 

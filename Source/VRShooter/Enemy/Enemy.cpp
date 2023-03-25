@@ -20,6 +20,9 @@
 #include "Camera/CameraShakeBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SceneComponent.h"
+#include "VRShooter/Pickups/PickupSpawner.h"
+#include "VRShooter/Weapon/Projectile.h"
+#include "Perception/AIPerceptionComponent.h"
 
 AEnemy::AEnemy()
 {
@@ -31,7 +34,7 @@ AEnemy::AEnemy()
 
 	AgroSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AgroSphere"));
 	AgroSphere->SetupAttachment(GetRootComponent());
-
+	
 	CombatRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CombatRangeSphere"));
 	CombatRangeSphere->SetupAttachment(GetRootComponent());
 
@@ -42,8 +45,14 @@ AEnemy::AEnemy()
 	RightWeaponCollision = CreateDefaultSubobject<UBoxComponent>(TEXT("RightWeaponCollision"));
 	RightWeaponCollision->SetupAttachment(GetMesh(), FName("RightWeaponBone"));
 
+	// TODO: This is only for test purposes. It's will be changed to AI Seeing peception
+	ShootingRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("ShootingRangeSphere"));
+	ShootingRangeSphere->SetupAttachment(GetRootComponent());
+
 	// AI Smooth rotation
 	bUseControllerRotationYaw = false;
+
+	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerceptionComponent"));
 }
 
 void AEnemy::BeginPlay()
@@ -54,7 +63,9 @@ void AEnemy::BeginPlay()
 	
 	CombatRangeSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnCombatRangeSphereOverlap);
 	CombatRangeSphere->OnComponentEndOverlap.AddDynamic(this, &AEnemy::OnCombatRangeSphereEndOverlap);
-	
+	ShootingRangeSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnShootingRangeSphereOverlap);
+	ShootingRangeSphere->OnComponentEndOverlap.AddDynamic(this, &AEnemy::OnShootingRangeSphereEndOverlap);
+
 	// Bind funtions to overlap events for weapon boxes
 	LeftWeaponCollision->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnLeftWeaponOverlap);
 	RightWeaponCollision->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnRightWeaponOverlap);
@@ -140,6 +151,11 @@ void AEnemy::BeginPlay()
 			WorldPatrolPoint2
 		);
 
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(
+			TEXT("ShootingEnemy"),
+			bShootingEnemy
+		);
+
 		EnemyController->RunBehaviorTree(BehaviorTree);
 	}
 	
@@ -190,20 +206,19 @@ void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void AEnemy::OnAgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
-	if (OtherActor)
-	{
-		VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	if (OtherActor == nullptr) return;
 
-		if (VRShooterCharacter &&
-			EnemyController &&
-			EnemyController->GetBlackboardComponent())
-		{
-			// Set the value of the TargetBlackboardKey
-			EnemyController->GetBlackboardComponent()->SetValueAsObject(
-				TEXT("Target"), 
-				VRShooterCharacter
-			);
-		}
+	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+
+	if (VRShooterCharacter &&
+		EnemyController &&
+		EnemyController->GetBlackboardComponent())
+	{
+		// Set the value of the TargetBlackboardKey
+		EnemyController->GetBlackboardComponent()->SetValueAsObject(
+			TEXT("Target"), 
+			VRShooterCharacter
+		);
 	}
 }
 
@@ -211,7 +226,7 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 {
 	if (OtherActor == nullptr) return;
 
-	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
 
 	if (VRShooterCharacter)
 	{
@@ -219,6 +234,7 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 
 		if (bExplosiveEnemy)
 		{
+			// TODO: Implementing Blackboard
 			// Explode
 			DoDamage(VRShooterCharacter, true);
 			Die();
@@ -235,6 +251,46 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 		}
 	}
 }
+
+void AEnemy::OnShootingRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+
+{
+	if (OtherActor == nullptr) return;
+
+	// TODO: Aim to Player
+	// TODO: Rotate To Player
+	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+	
+	if (EnemyController &&
+		VRShooterCharacter)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(
+			TEXT("InShootingRange"),
+			true
+		);
+	}
+}
+
+void AEnemy::OnShootingRangeSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (OtherActor == nullptr) return;
+
+	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+
+	if (VRShooterCharacter)
+	{
+		bInAttackRange = false;
+
+		if (EnemyController)
+		{
+			EnemyController->GetBlackboardComponent()->SetValueAsBool(
+				TEXT("InShootingRange"),
+				false
+			);
+		}
+	}
+}
+
 
 void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 {
@@ -309,12 +365,11 @@ void AEnemy::RotateToPlayer(float DeltaTime)
 	}
 }
 
-
 void AEnemy::OnCombatRangeSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (OtherActor == nullptr) return;
 
-	VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
 
 	if (VRShooterCharacter)
 	{
@@ -397,6 +452,42 @@ void AEnemy::SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName)
 				SocketTransform.GetLocation(),
 				GetActorRotation()
 			);
+		}
+	}
+}
+
+void AEnemy::SpawningProjectile()
+{
+	const USkeletalMeshSocket* ProjectileSocket = GetMesh()->GetSocketByName(ProjectileSocketName);
+
+	if (ProjectileSocket &&
+		VRShooterCharacter)
+	{
+		FTransform ProjectileSocketTransform = ProjectileSocket->GetSocketTransform(GetMesh());
+		FVector SocketLocation = ProjectileSocketTransform.GetLocation();
+		FVector Direction = VRShooterCharacter->GetActorLocation() - SocketLocation;
+		FRotator Rotation = FRotationMatrix::MakeFromX(Direction).Rotator();
+
+		//FQuat Rotation = ProjectileSocketTransform.GetRotation();
+
+		FRotator TargetRotation = FRotator(Rotation);;//ToTarget.Rotation();
+
+		if (ProjectileClass)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = GetOwner();
+			SpawnParams.Instigator = this;
+			UWorld* World = GetWorld();
+
+			if (World)
+			{
+				World->SpawnActor<AProjectile>(
+					ProjectileClass,
+					ProjectileSocketTransform.GetLocation(),
+					TargetRotation,
+					SpawnParams
+					);
+			}
 		}
 	}
 }
@@ -938,6 +1029,10 @@ void AEnemy::RagdollEnd()
 			{
 				AnimInstance->Montage_Play(GetUpAnimationFaceUp, 1.f);
 			}
+			else
+			{
+				Die();
+			}
 		}
 		else
 		{
@@ -945,6 +1040,10 @@ void AEnemy::RagdollEnd()
 				GetUpAnimationFaceDown)
 			{
 				AnimInstance->Montage_Play(GetUpAnimationFaceDown, 1.f);
+			}
+			else
+			{
+				Die();
 			}
 		}
 	}
@@ -954,7 +1053,6 @@ void AEnemy::RagdollEnd()
 		// If not, set the movement mode to falling and update the character movement velocity to match the
 		// last ragdoll velocity
 	}
-
 
 	// Re-Enable capsule collision and disable physics simulation on the mesh
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -1022,9 +1120,26 @@ void AEnemy::FinishDeath()
 	GetWorldTimerManager().SetTimer(
 		DeathTimer,
 		this,
-		&AEnemy::DestroyEnemy,
+		&AEnemy::SpawnPickup,
 		DeathTime
 	);
+}
+
+void AEnemy::SpawnPickup()
+{
+	const float SpawnPickup = FMath::FRandRange(0.f, 1.f);
+
+	if (SpawnPickup <= SpawnPickupChance)
+	{
+		if (PickupSpawnerClasses.Num() > 0)
+		{
+			// TODO: Iteration trough Array items
+			FVector EnemyLocation = GetActorLocation();
+			FTransform SpawnedPickupTransform = FTransform(FQuat(GetActorRotation()), FVector(EnemyLocation.X, EnemyLocation.Y, 268), FVector(1.f));
+			SpawnedPickup = GetWorld()->SpawnActor<APickupSpawner>(PickupSpawnerClasses[0], SpawnedPickupTransform);
+		}
+	}
+	DestroyEnemy();
 }
 
 void AEnemy::DestroyEnemy()

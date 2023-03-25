@@ -1,4 +1,6 @@
 #include "Spawner.h"
+#include "Sound/SoundCue.h"
+#include "Kismet/GameplayStatics.h"
 
 ASpawner::ASpawner()
 {
@@ -33,6 +35,16 @@ void ASpawner::StartSpawnTimer(AActor* DestroyedActor)
 void ASpawner::SpawnTimerFinished()
 {
 	SpawningTheActor();
+
+	if (SpawnSound &&
+		bShouldPlayPickupSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			SpawnSound,
+			GetActorLocation()
+		);
+	}
 }
 
 void ASpawner::SpawningTheActor()

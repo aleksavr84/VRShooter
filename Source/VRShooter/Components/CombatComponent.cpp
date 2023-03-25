@@ -607,9 +607,9 @@ void UCombatComponent::AutoFireReset()
 
 void UCombatComponent::ReloadWeapon()
 {
-	if (CombatState != ECombatState::ECS_Unoccupied) return;	
+	if (CombatState != ECombatState::ECS_Unoccupied) return;
 	if (EquippedWeapon == nullptr) return;
-	
+
 	// Do we have ammo of the correct type?
 	if (CarryingAmmo() && 
 		(EquippedWeapon->GetAmmo() != EquippedWeapon->GetMagazineCapacity()))
@@ -755,7 +755,7 @@ void UCombatComponent::ReleaseClip()
 
 void UCombatComponent::WeaponReloadAnimStart()
 {
-	if (EquippedWeapon->GetWeaponReloadAnimLength())
+	if (EquippedWeapon)
 	{
 		Character->GetWorldTimerManager().SetTimer(
 			WeaponReloadTimer,
@@ -775,7 +775,6 @@ void UCombatComponent::FinishReloading()
 {
 	// Upadate the CombatState
 	CombatState = ECombatState::ECS_Unoccupied;
-	
 	if (EquippedWeapon == nullptr) return;
 
 	const auto AmmoType = EquippedWeapon->GetAmmoType();

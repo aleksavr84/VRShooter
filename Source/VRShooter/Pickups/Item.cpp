@@ -12,8 +12,8 @@ AItem::AItem()
 	PrimaryActorTick.bCanEverTick = true;
 
 	ItemMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ItemMesh"));
-	ItemMesh->SetupAttachment(GetRootComponent());
-	//SetRootComponent(ItemMesh);
+	//ItemMesh->SetupAttachment(GetRootComponent());
+	SetRootComponent(ItemMesh);
 
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
 	CollisionBox->SetupAttachment(ItemMesh);
@@ -21,10 +21,10 @@ AItem::AItem()
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
 	PickupWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
-	PickupWidget->SetupAttachment(RootComponent);
+	PickupWidget->SetupAttachment(GetRootComponent());
 
 	AreaSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AreaSphere"));
-	AreaSphere->SetupAttachment(GetRootComponent());
+	AreaSphere->SetupAttachment(ItemMesh);
 }
 
 void AItem::OnConstruction(const FTransform& Transform)

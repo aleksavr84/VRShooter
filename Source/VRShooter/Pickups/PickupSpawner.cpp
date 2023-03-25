@@ -12,7 +12,8 @@ void APickupSpawner::SpawningTheActor()
 		int32 Selection = FMath::RandRange(0, NumPickupClasses - 1);
 		SpawnedItem = GetWorld()->SpawnActor<AItem>(ItemClasses[Selection], GetActorTransform());
 
-		if (SpawnedItem)
+		if (SpawnedItem &&
+			bSouldRespawnAfterPickedUp)
 		{
 			SpawnedItem->OnDestroyed.AddDynamic(this, &APickupSpawner::StartSpawnTimer);
 		}

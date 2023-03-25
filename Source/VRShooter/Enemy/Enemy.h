@@ -32,6 +32,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
 	class USphereComponent* CombatRangeSphere;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	USphereComponent* ShootingRangeSphere;
+
 	// HealthBar
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* HealthBar;
@@ -120,6 +123,24 @@ private:
 		const FHitResult& SweepResult
 	);
 
+	UFUNCTION()
+	void OnShootingRangeSphereOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bfromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION()
+	void OnShootingRangeSphereEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex
+	);
+
 	// Activate/Deactivate collision for weapon boxes
 	UFUNCTION(BlueprintCallable)
 	void ActivateLeftWeapon();
@@ -132,6 +153,9 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void DeactivateRightWeapon();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UAIPerceptionComponent* AIPerceptionComponent;
 
 	// Base damage for enemy
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -354,7 +378,7 @@ private:
 	float ExplosionRadius = 500.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float ExplosionDamage = 100.f;
+	float ExplosionDamage = 50.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	USoundCue* ExplosionSound;
@@ -368,6 +392,31 @@ private:
 	// ExplosiveEnemy Scream sound -> It's playing from the begining in loop
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	USoundCue* ScreamSound;
+
+	// Spawning Pickups after dying
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pickups, meta = (AllowPrivateAccess = "true"))
+	TArray<TSubclassOf<class APickupSpawner>> PickupSpawnerClasses;
+
+	UPROPERTY()
+	APickupSpawner* SpawnedPickup;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Pickups, meta = (AllowPrivateAccess = "true"))
+	float SpawnPickupChance = .5f;
+
+	void SpawnPickup();
+
+	// Spawning Projectiles
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class AProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName ProjectileSocketName = FName("ProjectileSocket");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bShootingEnemy = false;
+
+	UFUNCTION(BlueprintCallable)
+	void SpawningProjectile();
 
 public:	
 	virtual void Tick(float DeltaTime) override;

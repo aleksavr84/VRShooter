@@ -20,4 +20,8 @@ protected:
 	AItem* SpawnedItem;
 
 	virtual void StartSpawnTimer(AActor* DestroyedActor) override;
+
+private:
+	UPROPERTY(EditAnywhere)
+	bool bSouldRespawnAfterPickedUp = false;
 };
