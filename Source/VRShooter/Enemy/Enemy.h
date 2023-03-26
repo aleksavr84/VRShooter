@@ -310,6 +310,7 @@ private:
 	FTimerHandle AttackWaitTimer;
 
 	// Minimum wait time between attacks
+	// TODO: Make it random
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float AttackWaitTime = 1.0f;
 

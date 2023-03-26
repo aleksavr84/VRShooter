@@ -109,7 +109,9 @@ void AItem::Tick(float DeltaTime)
 	// Handle Item Interping when in the EquipInterping state
 	ItemInterp(DeltaTime);
 
-	if (ItemMesh && ItemState == EItemState::EIS_Pickup)
+	if (ItemMesh && 
+		ItemState == EItemState::EIS_Pickup ||
+		ItemState == EItemState::EIS_EquipInterping)
 	{
 		ItemMesh->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
 	}

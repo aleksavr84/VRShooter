@@ -58,7 +58,7 @@ AWidgetActor* UCombatComponent::SpawnWidgetActor(TSubclassOf<class AWidgetActor>
 		WidgetActor->AttachToComponent(Character->GetCameraComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 		WidgetActor->SetShooterCharacter(Character);
 		WidgetActor->SetActorHiddenInGame(true);
-		WidgetActor->AddActorWorldOffset(LocationOffset);
+		WidgetActor->AddActorLocalOffset(LocationOffset);
 
 		return WidgetActor;
 	}
