@@ -23,6 +23,7 @@
 #include "VRShooter/Pickups/PickupSpawner.h"
 #include "VRShooter/Weapon/Projectile.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "EnemySpawner.h"
 
 AEnemy::AEnemy()
 {
@@ -191,12 +192,15 @@ void AEnemy::Tick(float DeltaTime)
 		{
 			RotateWidgetToPlayer(ShieldBar, VRShooterCharacter->GetActorLocation());
 		}
-	}
 
-	if (bShouldRotateToPlayer &&
-		!bDying)
-	{
-		RotateToPlayer(DeltaTime);
+		// Spawning Enemies
+		StartRestartEnemySpawnTimer();
+	
+		if (bShouldRotateToPlayer &&
+			!bDying)
+		{
+			RotateToPlayer(DeltaTime);
+		}
 	}
 
 	if (bIsRagdoll)
@@ -212,7 +216,6 @@ void AEnemy::Tick(float DeltaTime)
 void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
 void AEnemy::OnAgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
@@ -220,6 +223,7 @@ void AEnemy::OnAgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	if (OtherActor == nullptr) return;
 
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 
 	if (VRShooterCharacter &&
 		EnemyController &&
@@ -238,7 +242,8 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 	if (OtherActor == nullptr) return;
 
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
-
+	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	
 	if (VRShooterCharacter)
 	{
 		bInAttackRange = true;
@@ -271,6 +276,7 @@ void AEnemy::OnShootingRangeSphereOverlap(UPrimitiveComponent* OverlappedCompone
 	// TODO: Aim to Player
 	// TODO: Rotate To Player
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 	
 	if (EnemyController &&
 		VRShooterCharacter)
@@ -287,6 +293,7 @@ void AEnemy::OnShootingRangeSphereEndOverlap(UPrimitiveComponent* OverlappedComp
 	if (OtherActor == nullptr) return;
 
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 
 	if (VRShooterCharacter)
 	{
@@ -301,7 +308,6 @@ void AEnemy::OnShootingRangeSphereEndOverlap(UPrimitiveComponent* OverlappedComp
 		}
 	}
 }
-
 
 void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 {
@@ -381,7 +387,8 @@ void AEnemy::OnCombatRangeSphereEndOverlap(UPrimitiveComponent* OverlappedCompon
 	if (OtherActor == nullptr) return;
 
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
-
+	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	
 	if (VRShooterCharacter)
 	{
 		bInAttackRange = false;
@@ -404,6 +411,7 @@ void AEnemy::ActivateLeftWeapon()
 void AEnemy::OnLeftWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
+	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 	
 	if (VRShooterCharacter)
 	{
@@ -425,7 +433,8 @@ void AEnemy::ActivateRightWeapon()
 void AEnemy::OnRightWeaponOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
-
+	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
+	
 	if (VRShooterCharacter)
 	{
 		DoDamage(VRShooterCharacter);
@@ -471,36 +480,157 @@ void AEnemy::SpawningProjectile()
 {
 	const USkeletalMeshSocket* ProjectileSocket = GetMesh()->GetSocketByName(ProjectileSocketName);
 
-	if (ProjectileSocket &&
-		VRShooterCharacter)
+	if (EnemyController)
 	{
-		FTransform ProjectileSocketTransform = ProjectileSocket->GetSocketTransform(GetMesh());
-		FVector SocketLocation = ProjectileSocketTransform.GetLocation();
-		FVector Direction = VRShooterCharacter->GetActorLocation() - SocketLocation;
-		FRotator Rotation = FRotationMatrix::MakeFromX(Direction).Rotator();
+		VRShooterCharacter = Cast<AVRShooterCharacter>(EnemyController->GetBlackboardComponent()->GetValueAsObject(FName("Target")));
 
-		//FQuat Rotation = ProjectileSocketTransform.GetRotation();
-
-		FRotator TargetRotation = FRotator(Rotation);;//ToTarget.Rotation();
-
-		if (ProjectileClass)
+		if (ProjectileSocket &&
+			VRShooterCharacter)
 		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = GetOwner();
-			SpawnParams.Instigator = this;
-			UWorld* World = GetWorld();
+			FTransform ProjectileSocketTransform = ProjectileSocket->GetSocketTransform(GetMesh());
+			FVector SocketLocation = ProjectileSocketTransform.GetLocation();
+			FVector Direction = VRShooterCharacter->GetActorLocation() - SocketLocation;
+			FRotator Rotation = FRotationMatrix::MakeFromX(Direction).Rotator();
 
-			if (World)
+			//FQuat Rotation = ProjectileSocketTransform.GetRotation();
+
+			FRotator TargetRotation = FRotator(Rotation);//ToTarget.Rotation();
+
+			if (ProjectileClass)
 			{
-				World->SpawnActor<AProjectile>(
-					ProjectileClass,
-					ProjectileSocketTransform.GetLocation(),
-					TargetRotation,
-					SpawnParams
-					);
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = GetOwner();
+				SpawnParams.Instigator = this;
+				UWorld* World = GetWorld();
+
+				if (World)
+				{
+					World->SpawnActor<AProjectile>(
+						ProjectileClass,
+						SocketLocation,
+						TargetRotation,
+						SpawnParams
+						);
+				}
 			}
 		}
 	}
+}
+
+void AEnemy::StartRestartEnemySpawnTimer()
+{
+	if (EnemyToSpawnClasses.Num() > 0 &&
+		Shield > 0.f &&
+		SpawnedEnemies.Num() == 0 &&
+		!bEnemiesSpawningStarted)
+	{
+		bEnemiesSpawningStarted = true;
+
+		GetWorldTimerManager().SetTimer(
+			RestartEnemySpawnTimer,
+			this,
+			&AEnemy::SpawnEnemies,
+			RestartEnemySpawnTime
+		);
+	}
+}
+
+void AEnemy::SpawnEnemies()
+{
+	if (EnemyToSpawnClasses.Num() > 0 &&
+		SpawnedEnemies.Num() == 0)
+	{
+		if (EnemyController)
+		{
+			EnemyController->GetBlackboardComponent()->SetValueAsBool(
+				TEXT("SpawningEnemy"),
+				true
+			);
+		}
+		bEnemiesSpawning = true;
+		bCanHitReact = false;
+
+		for (auto SpawnClass : EnemyToSpawnClasses)
+		{
+			EnemyToSpawnClass = SpawnClass;
+			StartEnemySpawnTimer();
+		}
+	}
+}
+
+void AEnemy::StartEnemySpawnTimer()
+{
+	FTimerHandle EnemySpawnTimer;
+	FTimerDelegate EnemySpawnDelegate;
+	EnemySpawnDelegate.BindUFunction(this, FName("PlaySpawningEnemyMontage"));
+	GetWorld()->GetTimerManager().SetTimer(
+		EnemySpawnTimer,
+		EnemySpawnDelegate,
+		EnemySpawnTime,
+		false
+	);
+}
+
+void AEnemy::PlaySpawningEnemyMontage()
+{
+	if (SpawningEnemiesMontage)
+	{
+		// TODO: Create a generic MontagePlay function to Playing HitReact, Attack, Death, Spell animations
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_Play(SpawningEnemiesMontage, 1.f);
+		}
+	}
+}
+
+// It's called in AnimBP (AnimNotify, afet montage played)
+void AEnemy::SpawnEnemy()
+{
+	if (EnemyToSpawnClass)
+	{
+		FVector EnemyLocation = GetActorLocation() + EnemySpawnOffset;
+		FTransform SpawnedEnemyTransform = FTransform(FQuat(GetActorRotation()), FVector(EnemyLocation.X, EnemyLocation.Y, 268), FVector(1.f));
+		SpawnedEnemy = GetWorld()->SpawnActor<AEnemy>(EnemyToSpawnClass, SpawnedEnemyTransform);
+		
+		if (SpawnedEnemy)
+		{
+			SpawnedEnemy->SetSpawnerEnemyReference(this);
+			SpawnedEnemies.Add(SpawnedEnemy);
+		}
+
+		// Restart Timer -> Spawn new enemies if the SpawnedEnemies <= MaxNumberOfSpawnedEnemies
+		if (SpawnedEnemies.Num() < MaxNumberOfSpawnedEnemies)
+		{
+			StartEnemySpawnTimer();
+		}
+		// Stop spawning Enemies
+		else if (EnemyToSpawnClasses.Num() > 0 &&
+			SpawnedEnemies.Num() == MaxNumberOfSpawnedEnemies)
+		{
+			bCanHitReact = true;
+			bEnemiesSpawning = false;
+			bEnemiesSpawningStarted = false;
+
+			if (EnemyController)
+			{
+				EnemyController->GetBlackboardComponent()->SetValueAsBool(
+					TEXT("SpawningEnemy"),
+					false
+				);
+			}
+		}
+		
+	}
+}
+
+FVector AEnemy::GetRandomSpawningPoint()
+{
+	return UKismetMathLibrary::TransformLocation(
+		GetActorTransform(),
+		FMath::RandBool() == true ? EnemySpawnPoint : EnemySpawnPoin2
+	);
 }
 
 void AEnemy::DoDamage(AVRShooterCharacter* Victim, bool bRadialDamage)
@@ -631,14 +761,17 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 		ShowOverlayWidget(ShieldBar);
 	}
 
-	// Determine whether bullet hit stunns
-	const float Stunned = FMath::FRandRange(0.f, 1.f);
-
-	if (Stunned <= StunChance)
+	if (!bEnemiesSpawning)
 	{
-		// Stun the Enemy
-		PlayHitMontage(FName("HitReactFront"));
-		SetStunned(true);
+		// Determine whether bullet hit stunns
+		const float Stunned = FMath::FRandRange(0.f, 1.f);
+
+		if (Stunned <= StunChance)
+		{
+			// Stun the Enemy
+			PlayHitMontage(FName("HitReactFront"));
+			SetStunned(true);
+		}
 	}
 }
 
@@ -719,6 +852,9 @@ void AEnemy::ResetStunn()
 
 void AEnemy::ShowHitNumber(AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot)
 {
+	// HitNumber will be only showed if no Spawned Enemies exists
+	if (SpawnedEnemies.Num() != 0) return;
+
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
@@ -769,7 +905,7 @@ void AEnemy::PlayHitMontage(FName Section, float PlayRate)
 	if (bCanHitReact)
 	{
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-
+		
 		if (AnimInstance)
 		{
 			AnimInstance->Montage_Play(HitMontage, PlayRate);
@@ -826,7 +962,7 @@ void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocati
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (!bDying)
+	if (!bDying && !bEnemiesSpawning)
 	{
 		float DamageToHealth = DamageAmount;
 
@@ -841,27 +977,30 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 				DamageCauser
 			);
 		}
-		if (Shield > 0.f)
+		if (SpawnedEnemies.Num() == 0)
 		{
-			if (Shield >= DamageAmount)
+			if (Shield > 0.f)
 			{
-				Shield = FMath::Clamp(Shield - DamageAmount, 0.f, MaxShield);
-				DamageToHealth = 0.f;
+				if (Shield >= DamageAmount)
+				{
+					Shield = FMath::Clamp(Shield - DamageAmount, 0.f, MaxShield);
+					DamageToHealth = 0.f;
+				}
+				else
+				{
+					DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0.f, DamageAmount);
+					Shield = 0.f;
+				}
 			}
-			else
+
+			Health = FMath::Clamp(Health - DamageToHealth, 0.f, MaxHealth);
+
+			if (Health <= 0.f)
 			{
-				DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0.f, DamageAmount);
-				Shield = 0.f;
+				Health = 0.f;
+				UpdatePlayerKillCounter(EventInstigator->GetPawn());
+				Die();
 			}
-		}
-
-		Health = FMath::Clamp(Health - DamageToHealth, 0.f, MaxHealth);
-
-		if (Health <= 0.f)
-		{
-			Health = 0.f;
-			UpdatePlayerKillCounter(EventInstigator->GetPawn());
-			Die();
 		}
 	}
 	return Health;
@@ -875,6 +1014,11 @@ void AEnemy::ResetHitReactTimer()
 void AEnemy::Die()
 {
 	if (bDying) return;
+
+	if (SpawnerEnemyReference)
+	{
+		SpawnerEnemyReference->RemoveEnemyFromSpawnedEnemies(this);
+	}
 
 	bDying = true;
 
@@ -891,7 +1035,6 @@ void AEnemy::Die()
 	}
 	else
 	{
-		
 		StartSlowMotion();
 		RagdollStart();
 	}
@@ -907,8 +1050,15 @@ void AEnemy::Die()
 	}
 }
 
+void AEnemy::RemoveEnemyFromSpawnedEnemies(AEnemy* EnemyToRemove)
+{
+	SpawnedEnemies.Remove(EnemyToRemove);
+}
+
 void AEnemy::RagdollStart()
 {
+	if (bRagdollDisabled) return;
+
 	bIsRagdoll = true;
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
@@ -1167,10 +1317,12 @@ void AEnemy::SpawnPickup()
 	{
 		if (PickupSpawnerClasses.Num() > 0)
 		{
-			// TODO: Iteration trough Array items
-			FVector EnemyLocation = GetActorLocation();
-			FTransform SpawnedPickupTransform = FTransform(FQuat(GetActorRotation()), FVector(EnemyLocation.X, EnemyLocation.Y, 268), FVector(1.f));
-			SpawnedPickup = GetWorld()->SpawnActor<APickupSpawner>(PickupSpawnerClasses[0], SpawnedPickupTransform);
+			for (auto PickupSpawnerClass : PickupSpawnerClasses)
+			{				
+				FVector EnemyLocation = FVector(GetActorLocation().X + FMath::RandRange(10.f, 300.f) , GetActorLocation().Y + FMath::RandRange(10.f, 300.f), GetActorLocation().Z);
+				FTransform SpawnedPickupTransform = FTransform(FQuat(GetActorRotation()), FVector(EnemyLocation.X, EnemyLocation.Y, 268), FVector(1.f));
+				SpawnedPickup = GetWorld()->SpawnActor<APickupSpawner>(PickupSpawnerClass, SpawnedPickupTransform);
+			}
 		}
 	}
 	DestroyEnemy();

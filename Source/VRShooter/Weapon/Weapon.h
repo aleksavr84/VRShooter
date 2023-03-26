@@ -145,7 +145,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 protected:
-	void StopFalling();
+	//void StopFalling();
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
@@ -239,14 +239,11 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
 	bool bMovingClip = false;
 
-	FTimerHandle ThrowWeaponTimer;
-	float ThrowWeaponTime;
-	bool bFalling;
 	int32 PreviousMaterialIndex;
 
 public:
 	// Adds an impulse to the Weapon
-	void ThrowWeapon();
+	//void ThrowWeapon();
 	virtual void Fire(const FVector& HitTarget);
 	void Reload();
 	

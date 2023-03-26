@@ -10,7 +10,20 @@ void APickupSpawner::SpawningTheActor()
 	if (NumPickupClasses > 0)
 	{
 		int32 Selection = FMath::RandRange(0, NumPickupClasses - 1);
-		SpawnedItem = GetWorld()->SpawnActor<AItem>(ItemClasses[Selection], GetActorTransform());
+
+		FTransform Transform;
+
+		if (bAddImpulseAfterSpawning)
+		{
+			SpawnedItem = GetWorld()->SpawnActor<AItem>(ItemClasses[Selection], Transform);
+			SpawnedItem->SetItemState(EItemState::EIS_Falling);
+			SpawnedItem->ThrowItem();
+		}
+		else
+		{
+			Transform = GetActorTransform();
+			SpawnedItem = GetWorld()->SpawnActor<AItem>(ItemClasses[Selection], Transform);
+		}
 
 		if (SpawnedItem &&
 			bSouldRespawnAfterPickedUp)

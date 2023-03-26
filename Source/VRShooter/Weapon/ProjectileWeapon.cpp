@@ -11,7 +11,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
     
     if (MuzzleFlashSocket)
     {   
-        FTransform SocketTransform = MuzzleFlashSocket->GetSocketTransform(GetItemMesh());
+        FTransform SocketTransform = MuzzleFlashSocket->GetSocketTransform(GetItemSkeletalMesh());
 
         // From muzzle flesh socket to hit location from TraceUnderCrosshairs.
         //FVector ToTarget = HitTarget - SocketTransform.GetLocation();

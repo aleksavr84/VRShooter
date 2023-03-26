@@ -24,4 +24,7 @@ protected:
 private:
 	UPROPERTY(EditAnywhere)
 	bool bSouldRespawnAfterPickedUp = false;
+	
+	UPROPERTY(EditAnywhere)
+	bool bAddImpulseAfterSpawning = false;
 };

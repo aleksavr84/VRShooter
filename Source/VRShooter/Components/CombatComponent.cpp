@@ -117,7 +117,7 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip, bool bSwapping)
 			}
 
 			EquippedWeapon = WeaponToEquip;
-			//EquippedWeapon->GetItemMesh()->SetWorldRotation(EquippedWeapon->GetWeaponRotation());
+			EquippedWeapon->GetValidMeshComponent()->SetRelativeRotation(EquippedWeapon->GetItemDefaultRotation()); //->SetWorldRotation(EquippedWeapon->GetItemDefaultRotation());
 			EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
 
 			bIsEquipped = true;
@@ -132,10 +132,10 @@ void UCombatComponent::DropWeapon()
 	if (EquippedWeapon)
 	{
 		FDetachmentTransformRules DetachmentTransformRules(EDetachmentRule::KeepWorld, true);
-		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransformRules);
+		EquippedWeapon->GetItemSkeletalMesh()->DetachFromComponent(DetachmentTransformRules);
 
 		EquippedWeapon->SetItemState(EItemState::EIS_Falling);
-		EquippedWeapon->ThrowWeapon();
+		EquippedWeapon->ThrowItem();
 
 		bIsEquipped = false;
 	}
@@ -317,7 +317,7 @@ void UCombatComponent::SendBullet()
 	StartHitMultiplierTimer();
 	
 	// Send bullet
-	const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemMesh();
+	const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemSkeletalMesh();
 
 	if (WeaponMesh)
 	{
@@ -735,8 +735,8 @@ void UCombatComponent::GrabClip()
 	if (Character)
 	{
 		// Index for the clip bone on the equipped weapon.
-		int32 ClipBoneIndex{ EquippedWeapon->GetItemMesh()->GetBoneIndex(EquippedWeapon->GetClipBoneName()) };
-		ClipTransform = EquippedWeapon->GetItemMesh()->GetBoneTransform(ClipBoneIndex);
+		int32 ClipBoneIndex{ EquippedWeapon->GetItemSkeletalMesh()->GetBoneIndex(EquippedWeapon->GetClipBoneName()) };
+		ClipTransform = EquippedWeapon->GetItemSkeletalMesh()->GetBoneTransform(ClipBoneIndex);
 
 		FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
 		HandSceneComponent->AttachToComponent(Character->GetBodyMesh(), AttachmentRules, FName(TEXT("hand_l")));

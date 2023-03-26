@@ -32,9 +32,9 @@ protected:
 		);
 
 private:
-	// Mesh for the Ammo pickup
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Ammo, meta = (AllowPrivateAccess = "true"))
-	UStaticMeshComponent* AmmoMesh;
+	//// Mesh for the Ammo pickup
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Ammo, meta = (AllowPrivateAccess = "true"))
+	//UStaticMeshComponent* AmmoMesh;
 
 	// Ammo type for the ammo
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Ammo, meta = (AllowPrivateAccess = "true"))
@@ -49,6 +49,6 @@ private:
 	class USphereComponent* AmmoCollisionSphere;
 
 public:
-	FORCEINLINE UStaticMeshComponent* GetAmmoMesh() const { return AmmoMesh; }
+	/*FORCEINLINE UStaticMeshComponent* GetAmmoMesh() const { return AmmoMesh; }*/
 	FORCEINLINE EAmmoType GetAmmoType() const { return AmmoType; }
 };

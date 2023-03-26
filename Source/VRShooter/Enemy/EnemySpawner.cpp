@@ -9,12 +9,17 @@ void AEnemySpawner::SpawningTheActor()
 
 	if (NumPickupClasses > 0)
 	{
-		int32 Selection = FMath::RandRange(0, NumPickupClasses - 1);
-		SpawnedEnemy = GetWorld()->SpawnActor<AEnemy>(EnemyClasses[Selection], GetActorTransform());
+		NumberOfSpawns += 1;
 
-		if (SpawnedEnemy)
+		if (NumberOfSpawns <= MaxNumberOfSpawns || bInfinitSpawn)
 		{
-			SpawnedEnemy->OnDestroyed.AddDynamic(this, &AEnemySpawner::StartSpawnTimer);
+			int32 Selection = FMath::RandRange(0, NumPickupClasses - 1);
+			SpawnedEnemy = GetWorld()->SpawnActor<AEnemy>(EnemyClasses[Selection], GetActorTransform());
+
+			if (SpawnedEnemy)
+			{
+				SpawnedEnemy->OnDestroyed.AddDynamic(this, &AEnemySpawner::StartSpawnTimer);
+			}
 		}
 	}
 }

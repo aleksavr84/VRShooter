@@ -11,26 +11,29 @@ AItem::AItem()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	ItemMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ItemMesh"));
-	//ItemMesh->SetupAttachment(GetRootComponent());
-	SetRootComponent(ItemMesh);
-
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
-	CollisionBox->SetupAttachment(ItemMesh);
+	CollisionBox->SetupAttachment(ItemSkeletalMesh);
 	CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
+	SetRootComponent(CollisionBox);
+
+	ItemSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ItemSkeletalMesh"));
+	ItemSkeletalMesh->SetupAttachment(CollisionBox);
+	//SetRootComponent(ItemSkeletalMesh);
+
+	ItemStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemStaticMesh"));
+	ItemStaticMesh->SetupAttachment(CollisionBox);
+
 	PickupWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
-	PickupWidget->SetupAttachment(GetRootComponent());
+	PickupWidget->SetupAttachment(CollisionBox);
 
 	AreaSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AreaSphere"));
-	AreaSphere->SetupAttachment(ItemMesh);
+	AreaSphere->SetupAttachment(CollisionBox);
 }
 
 void AItem::OnConstruction(const FTransform& Transform)
 {
-	
-	/*UE_LOG(LogTemp, Warning, TEXT("OnConstruction"));*/
 	// Load the data in the ItemRarity DataTable
 
 	// Path to the Item Rarity DataTable
@@ -79,7 +82,7 @@ void AItem::OnConstruction(const FTransform& Transform)
 	{
 		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
 		//DynamicMaterialInstance->SetVectorParameterValue(TEXT("FresnelColor"), GlowColor);
-		ItemMesh->SetMaterial(MaterialIndex, DynamicMaterialInstance);
+		ItemSkeletalMesh->SetMaterial(MaterialIndex, DynamicMaterialInstance);
 
 		//EnableGlowMaterial();
 	}
@@ -98,6 +101,7 @@ void AItem::BeginPlay()
 	AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AItem::OnSphereOverlap);
 	AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AItem::OnSphereEndOverlap);
 
+	ItemDefaultRotation = GetValidMeshComponent()->GetComponentRotation();
 	// Set Item properties based on ItemState
 	SetItemProperties(ItemState);
 }
@@ -109,11 +113,14 @@ void AItem::Tick(float DeltaTime)
 	// Handle Item Interping when in the EquipInterping state
 	ItemInterp(DeltaTime);
 
-	if (ItemMesh && 
-		ItemState == EItemState::EIS_Pickup ||
-		ItemState == EItemState::EIS_EquipInterping)
+	if (GetValidMeshComponent() &&
+		(ItemState == EItemState::EIS_Pickup ||
+		ItemState == EItemState::EIS_EquipInterping))
 	{
-		ItemMesh->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
+		UE_LOG(LogTemp, Warning, TEXT("GetValidMeshComponent() &&"));
+
+		GetItemStaticMesh()->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
+		GetItemSkeletalMesh()->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
 	}
 
 	//// TODO: This is only a Temporary Solution -> The pickup Widget doesn't hide after the player not looking at the Item
@@ -121,6 +128,19 @@ void AItem::Tick(float DeltaTime)
 	{
 		PickupWidget->SetVisibility(false);
 	}
+}
+
+UMeshComponent* AItem::GetValidMeshComponent()
+{
+	if (ItemSkeletalMesh)
+	{
+		return ItemSkeletalMesh;
+	}
+	else if (ItemStaticMesh)
+	{
+		return ItemStaticMesh;
+	}
+	return nullptr;
 }
 
 void AItem::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
@@ -216,11 +236,11 @@ void AItem::SetItemProperties(EItemState State)
 	case EItemState::EIS_Pickup:
 		PickupWidget->SetVisibility(false);
 		// Set Mesh properties
-		ItemMesh->SetSimulatePhysics(false);
-		ItemMesh->SetEnableGravity(false);
-		ItemMesh->SetVisibility(true);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetValidMeshComponent()->SetSimulatePhysics(false);
+		GetValidMeshComponent()->SetEnableGravity(false);
+		GetValidMeshComponent()->SetVisibility(true);
+		GetValidMeshComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		GetValidMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		
 		// Set AreaSphere properties
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
@@ -235,13 +255,12 @@ void AItem::SetItemProperties(EItemState State)
 	case EItemState::EIS_Equipped:
 		PickupWidget->SetVisibility(false);
 		// Set Mesh properties
-		ItemMesh->SetSimulatePhysics(false);
-		ItemMesh->SetEnableGravity(false);
-		ItemMesh->SetVisibility(true);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		//ItemMesh->AddWorldRotation(WeaponMeshRotation);
-
+		GetValidMeshComponent()->SetSimulatePhysics(false);
+		GetValidMeshComponent()->SetEnableGravity(false);
+		GetValidMeshComponent()->SetVisibility(true);
+		GetValidMeshComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		GetValidMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		
 		// Set AreaSphere properties
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -254,12 +273,12 @@ void AItem::SetItemProperties(EItemState State)
 	case EItemState::EIS_Falling:
 		PickupWidget->SetVisibility(false);
 		// Set Mesh properties
-		ItemMesh->SetSimulatePhysics(true);
-		ItemMesh->SetEnableGravity(true);
-		ItemMesh->SetVisibility(true);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
+		GetValidMeshComponent()->SetSimulatePhysics(true);
+		GetValidMeshComponent()->SetEnableGravity(true);
+		GetValidMeshComponent()->SetVisibility(true);
+		GetValidMeshComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		GetValidMeshComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		GetValidMeshComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
 		//ItemMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Block);
 		
 		// Set AreaSphere properties
@@ -274,11 +293,11 @@ void AItem::SetItemProperties(EItemState State)
 	case EItemState::EIS_EquipInterping:
 		PickupWidget->SetVisibility(false);
 		// Set Mesh properties
-		ItemMesh->SetSimulatePhysics(false);
-		ItemMesh->SetEnableGravity(false);
-		ItemMesh->SetVisibility(true);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetValidMeshComponent()->SetSimulatePhysics(false);
+		GetValidMeshComponent()->SetEnableGravity(false);
+		GetValidMeshComponent()->SetVisibility(true);
+		GetValidMeshComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		GetValidMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 		// Set AreaSphere properties
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -293,11 +312,11 @@ void AItem::SetItemProperties(EItemState State)
 		PickupWidget->SetVisibility(false);
 
 		// Set mesh properties
-		ItemMesh->SetSimulatePhysics(false);
-		ItemMesh->SetEnableGravity(false);
-		ItemMesh->SetVisibility(false);
-		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetValidMeshComponent()->SetSimulatePhysics(false);
+		GetValidMeshComponent()->SetEnableGravity(false);
+		GetValidMeshComponent()->SetVisibility(false);
+		GetValidMeshComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		GetValidMeshComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 		// Set AreaSphere properties
 		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -509,5 +528,48 @@ void AItem::FinishInterping()
 
 	// Set scale back to normal
 	SetActorScale3D(FVector(1.f));
+}
+
+void AItem::ThrowItem(bool bForward, float Impulse)
+{
+	FRotator MeshRotation;
+	FVector MeshRight;
+	FVector MeshForward;
+	FVector MeshUp;
+	
+	MeshRotation = FRotator(0.f, GetValidMeshComponent()->GetComponentRotation().Yaw, 0.f);
+	GetValidMeshComponent()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
+	MeshForward = GetValidMeshComponent()->GetForwardVector();
+	MeshUp = GetValidMeshComponent()->GetUpVector();
+	MeshRight = GetValidMeshComponent()->GetRightVector();
+	
+	// Direction in which we throw the Weapon
+	FVector ImpulseDirection = MeshRight.RotateAngleAxis(-20.f, bForward ? MeshForward : MeshUp);
+
+	float RandomRotation{ FMath::FRandRange(10.f, 30.f) };
+	ImpulseDirection = ImpulseDirection.RotateAngleAxis(RandomRotation, FVector(0.f, 0.f, 1.f));
+	ImpulseDirection *= Impulse;
+
+	bFalling = true;
+
+	GetValidMeshComponent()->AddImpulse(ImpulseDirection);
+	
+	GetWorldTimerManager().SetTimer(
+		ThrowItemTimer,
+		this,
+		&AItem::StopFalling,
+		ThrowItemTime);
+}
+
+void AItem::StopFalling()
+{
+	FRotator MeshRotation;
+
+	MeshRotation = FRotator(0.f, GetValidMeshComponent()->GetComponentRotation().Yaw, 0.f);
+	SetActorRotation(FQuat(FRotator(0.f, 0.f, 0.f)));
+	GetValidMeshComponent()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	SetItemState(EItemState::EIS_Pickup);
+	bFalling = false;
 }
 

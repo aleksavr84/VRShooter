@@ -19,5 +19,15 @@ protected:
 	UPROPERTY()
 	AEnemy* SpawnedEnemy;
 
+	TArray<AEnemy*> SpawnedEnemies;
+
+	UPROPERTY(EditAnywhere)
+	int32 MaxNumberOfSpawns = 3;
+
+	int32 NumberOfSpawns = 0;
+
+	UPROPERTY(EditAnywhere)
+	bool bInfinitSpawn = false;
+
 	virtual void StartSpawnTimer(AActor* DestroyedActor) override;
 };

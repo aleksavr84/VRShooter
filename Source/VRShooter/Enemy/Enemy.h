@@ -175,7 +175,7 @@ private:
 	class USoundCue* ImpactSound;
 
 	// Current health of the enemy
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float Health = 100.f;
 
 	// Maximum health of the enemy
@@ -324,8 +324,9 @@ private:
 
 	// Minimum wait time between attacks
 	// TODO: Make it random
+	// TODO: GetMontageLength
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float AttackWaitTime = 1.0f;
+	float AttackWaitTime = 2.2f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* DeathMontage;
@@ -385,6 +386,7 @@ private:
 	UFUNCTION()
 	void StopSlowMotion();
 
+	// TODO: Make Enum!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bExplosiveEnemy = false;
 
@@ -426,11 +428,70 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FName ProjectileSocketName = FName("ProjectileSocket");
 
+	// TODO: Make Enum!
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bShootingEnemy = false;
 
 	UFUNCTION(BlueprintCallable)
 	void SpawningProjectile();
+
+	// Spawning Enemies
+	AEnemy* SpawnerEnemyReference;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* SpawningEnemiesMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
+	TArray<TSubclassOf<AEnemy>> EnemyToSpawnClasses;
+
+	TSubclassOf<AEnemy> EnemyToSpawnClass;
+
+	UPROPERTY()
+	AEnemy* SpawnedEnemy;
+
+	TArray<AEnemy*> SpawnedEnemies;
+
+	bool bEnemiesSpawningStarted = false;
+	bool bEnemiesSpawning = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
+	int32 MaxNumberOfSpawnedEnemies = 5;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
+	float EnemySpawnTime = 1.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
+	FVector EnemySpawnOffset;
+
+	void StartEnemySpawnTimer();
+	
+	UFUNCTION()
+	void PlaySpawningEnemyMontage();
+
+	UFUNCTION(BlueprintCallable)
+	void SpawnEnemy();
+
+	FTimerHandle RestartEnemySpawnTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
+	float RestartEnemySpawnTime = 2.f;
+
+	void StartRestartEnemySpawnTimer();
+
+	// First Spawning Point for the Enemy spawner
+	UPROPERTY(EditAnywhere, Category = SpawningEnemies, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
+	FVector EnemySpawnPoint;
+
+	// Second Spawning Point for the Enemy spawner
+	UPROPERTY(EditAnywhere, Category = SpawningEnemies, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
+	FVector EnemySpawnPoin2;
+
+	UPROPERTY(EditAnywhere, Category = Initialization, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
+	bool bRagdollDisabled = false;
+
+	FVector GetRandomSpawningPoint();
+	void SpawnEnemies();
+	void RemoveEnemyFromSpawnedEnemies(AEnemy* EnemyToRemove);
 
 public:	
 	virtual void Tick(float DeltaTime) override;
@@ -445,6 +506,9 @@ public:
 	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
 	FORCEINLINE UParticleSystem* GetBloodParticles() const { return BloodParticles; }
 
+	FORCEINLINE void SetSpawnerEnemyReference(AEnemy* Reference) { SpawnerEnemyReference = Reference; }
+	FORCEINLINE TArray<AEnemy*> GetSpawnedEnemies() const { return SpawnedEnemies; }
+	
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE bool GetIsRagdoll() const { return bIsRagdoll; }
 

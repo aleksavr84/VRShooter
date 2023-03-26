@@ -35,6 +35,9 @@ class VRSHOOTER_API AItem : public AActor
 public:	
 	AItem();
 
+	void ThrowItem(bool bForward = true, float Impulse = 2000.f);
+	void StopFalling();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
@@ -89,7 +92,11 @@ protected:
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
-	USkeletalMeshComponent* ItemMesh;
+	USkeletalMeshComponent* ItemSkeletalMesh;
+
+	// Mesh for the Ammo pickup
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Ammo, meta = (AllowPrivateAccess = "true"))
+	UStaticMeshComponent* ItemStaticMesh;
 
 	// LineTrace collides with box to show HUD widgets
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
@@ -235,11 +242,18 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 	FPostProcessSettings PickUpPostProcess;
 
+	FTimerHandle ThrowItemTimer;
+	float ThrowItemTime = 0.5f;
+	bool bFalling = false;
+
+	FRotator ItemDefaultRotation;
+
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() { return PickupWidget; }
 	FORCEINLINE USphereComponent* GetAreaSphere() const { return AreaSphere; }
 	FORCEINLINE UBoxComponent* GetCollisionBox() const { return CollisionBox; }
-	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
+	FORCEINLINE USkeletalMeshComponent* GetItemSkeletalMesh() const { return ItemSkeletalMesh; }
+	FORCEINLINE UStaticMeshComponent* GetItemStaticMesh() const { return ItemStaticMesh; }
 	FORCEINLINE EItemState GetItemState() const { return ItemState; }
 	FORCEINLINE USoundCue* GetPickupSound() const { return PickupSound; }
 	FORCEINLINE void SetPickupSound(USoundCue* Sound) { PickupSound = Sound; }
@@ -262,8 +276,7 @@ public:
 	FORCEINLINE FLinearColor GetGlowColor() const { return GlowColor; }
 	FORCEINLINE int32 GetMaterialIndex() const { return MaterialIndex; }
 	FORCEINLINE void SetMaterialIndex(int32 Index) { MaterialIndex = Index; }
-	//FORCEINLINE void SetWeaponRotation(FRotator Rotation) { WeaponMeshRotation = Rotation; }
-	//FORCEINLINE FRotator GetWeaponRotation() const { return WeaponMeshRotation; }
+	FORCEINLINE FRotator GetItemDefaultRotation() const { return ItemDefaultRotation; }
 
 	void SetItemState(EItemState State);
 
@@ -271,4 +284,6 @@ public:
 	void StartItemCurve(AVRShooterCharacter* Character, bool bForcePlaySound = false);
 
 	void ShowPickupWidget(bool Visible);
+
+	UMeshComponent* GetValidMeshComponent();
 };

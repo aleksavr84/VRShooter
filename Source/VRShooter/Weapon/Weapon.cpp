@@ -6,9 +6,7 @@
 #include "Camera/CameraShakeBase.h"
 #include "Kismet/GameplayStatics.h"
 
-AWeapon::AWeapon() :
-	ThrowWeaponTime(.5f),
-	bFalling(false)
+AWeapon::AWeapon()
 {
 	PrimaryActorTick.bCanEverTick = true;
 }
@@ -59,14 +57,14 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 			SetAmmoIcon(WeaponDataRow->AmmoIcon);
 			
 			// Meshes and MaterialInstances
-			GetItemMesh()->SetSkeletalMesh(WeaponDataRow->ItemMesh);
+			GetItemSkeletalMesh()->SetSkeletalMesh(WeaponDataRow->ItemMesh);
 			SetMaterialInstance(WeaponDataRow->MaterialInstance);
 			SetMaterialIndex(WeaponDataRow->MaterialIndex);
 			PreviousMaterialIndex = GetMaterialIndex();
-			GetItemMesh()->SetMaterial(PreviousMaterialIndex, nullptr);
+			GetItemSkeletalMesh()->SetMaterial(PreviousMaterialIndex, nullptr);
 			
 			//// Animations and Montages
-			GetItemMesh()->SetAnimInstanceClass(WeaponDataRow->AnimBP);
+			GetItemSkeletalMesh()->SetAnimInstanceClass(WeaponDataRow->AnimBP);
 			FireAnimation = WeaponDataRow->FireAnimation;
 			ReloadAnimation = WeaponDataRow->ReloadAnimation;
 			ReloadMontage = WeaponDataRow->ReloadMontage;
@@ -117,7 +115,7 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 			{
 				SetDynamicMaterialInstance(UMaterialInstanceDynamic::Create(GetMaterialInstance(), this));
 				//GetDynamicMaterialInstance()->SetVectorParameterValue(TEXT("FresnelColor"), GetGlowColor());
-				GetItemMesh()->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
+				GetItemSkeletalMesh()->SetMaterial(GetMaterialIndex(), GetDynamicMaterialInstance());
 
 				//EnableGlowMaterial();
 			}
@@ -138,48 +136,11 @@ void AWeapon::Tick(float DeltaTime)
 	//}
 }
 
-void AWeapon::ThrowWeapon()
-{
-
-	FRotator MeshRotation{ 0.f, GetItemMesh()->GetComponentRotation().Yaw, 0.f };
-	GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
-
-	const FVector MeshForward{ GetItemMesh()->GetForwardVector() };
-	const FVector MeshRight{ GetItemMesh()->GetRightVector() };
-	
-	// Direction in which we throw the Weapon
-	FVector ImpulseDirection = MeshRight.RotateAngleAxis(-20.f, MeshForward);
-
-	float RandomRotation{ FMath::FRandRange(10.f, 30.f) };
-	ImpulseDirection = ImpulseDirection.RotateAngleAxis(RandomRotation, FVector(0.f, 0.f, 1.f));
-	ImpulseDirection *= 2'000.f;
-	
-	bFalling = true;
-	
-	GetItemMesh()->AddImpulse(ImpulseDirection);
-
-	GetWorldTimerManager().SetTimer(
-		ThrowWeaponTimer, 
-		this, 
-		&AWeapon::StopFalling, 
-		ThrowWeaponTime);
-}
-
-void AWeapon::StopFalling()
-{
-	FRotator MeshRotation{ 0.f, GetItemMesh()->GetComponentRotation().Yaw, 0.f };
-	SetActorRotation(FQuat(FRotator(0.f, 0.f, 0.f)));
-	GetItemMesh()->SetWorldRotation(MeshRotation, false, nullptr, ETeleportType::TeleportPhysics);
-
-	SetItemState(EItemState::EIS_Pickup);
-	bFalling = false;
-}
-
 void AWeapon::Fire(const FVector& HitTarget)
 {
 	if (FireAnimation)
 	{
-		GetItemMesh()->PlayAnimation(FireAnimation, false);
+		GetItemSkeletalMesh()->PlayAnimation(FireAnimation, false);
 	}
 
 	if (FireCameraShake)
@@ -195,7 +156,7 @@ void AWeapon::Fire(const FVector& HitTarget)
 
 	if (CasingClass)
 	{
-		USkeletalMeshComponent* WeaponMesh = GetItemMesh();
+		USkeletalMeshComponent* WeaponMesh = GetItemSkeletalMesh();
 		const USkeletalMeshSocket* AmmoEjectSocket = WeaponMesh->GetSocketByName(FName("AmmoEject"));
 
 		if (AmmoEjectSocket)
@@ -221,7 +182,7 @@ void AWeapon::Reload()
 {
 	if (ReloadAnimation)
 	{
-		GetItemMesh()->PlayAnimation(ReloadAnimation, false);
+		GetItemSkeletalMesh()->PlayAnimation(ReloadAnimation, false);
 	}
 }
 
@@ -239,7 +200,7 @@ void AWeapon::DecrementAmmo()
 
 const USkeletalMeshSocket* AWeapon::GetMuzzleFlashSocket()
 {
-	USkeletalMeshComponent* WeaponMesh = GetItemMesh();
+	USkeletalMeshComponent* WeaponMesh = GetItemSkeletalMesh();
 
 	if (WeaponMesh)
 	{
