@@ -39,8 +39,11 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* HealthBar;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Initialization", meta = (AllowPrivateAccess = "true"))
+	UWidgetComponent* ShieldBar;
+
 	void RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocation);
-	bool bShouldRotateTheHealthBar = false;
+
 	class AVRShooterCharacter* VRShooterCharacter;
 
 protected:
@@ -71,8 +74,10 @@ protected:
 	void SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName);
 
 private:
-	void ShowHealthBar();
-	void HideHealthBar();
+	void ShowOverlayWidget(UWidgetComponent* WidgetComponent);
+	
+	UFUNCTION()
+	void HideOverlayWidget(UWidgetComponent* WidgetComponent);
 	
 	// Called when something overlaps with the agro sphere
 	UFUNCTION()
@@ -177,6 +182,14 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float MaxHealth = 100.f;
 
+	// Current Shield of the enemy
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float Shield = 0.f;
+
+	// Maximum Shield of the enemy
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MaxShield = 100.f;
+
 	// Name of the head bone
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FString HeadBone = "head";
@@ -185,7 +198,7 @@ private:
 
 	// Time to display healthBar once shot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float HealthBarDisplayTime = 4.f;
+	float OverlayWidgetDisplayTime = 4.f;
 
 	// Montage containing Hit and Death animation
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))

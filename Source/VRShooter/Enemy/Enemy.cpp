@@ -32,6 +32,10 @@ AEnemy::AEnemy()
 	HealthBar->SetupAttachment(GetRootComponent());
 	HealthBar->SetVisibility(false);
 
+	ShieldBar = CreateDefaultSubobject<UWidgetComponent>(TEXT("ShieldBar"));
+	ShieldBar->SetupAttachment(GetRootComponent());
+	ShieldBar->SetVisibility(false);
+
 	AgroSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AgroSphere"));
 	AgroSphere->SetupAttachment(GetRootComponent());
 	
@@ -174,11 +178,18 @@ void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bShouldRotateTheHealthBar)
+	if (VRShooterCharacter)
 	{
-		if (VRShooterCharacter)
+		if (HealthBar &&
+			HealthBar->IsWidgetVisible())
 		{
 			RotateWidgetToPlayer(HealthBar, VRShooterCharacter->GetActorLocation());
+		}
+		if (ShieldBar &&
+			Shield > 0.f &&
+			ShieldBar->IsWidgetVisible())
+		{
+			RotateWidgetToPlayer(ShieldBar, VRShooterCharacter->GetActorLocation());
 		}
 	}
 
@@ -612,8 +623,13 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 			GetActorLocation()
 		);
 	}
-
-	ShowHealthBar();
+	
+	ShowOverlayWidget(HealthBar);
+	
+	if (Shield > 0)
+	{
+		ShowOverlayWidget(ShieldBar);
+	}
 
 	// Determine whether bullet hit stunns
 	const float Stunned = FMath::FRandRange(0.f, 1.f);
@@ -772,39 +788,48 @@ void AEnemy::PlayHitMontage(FName Section, float PlayRate)
 	}
 }
 
-void AEnemy::ShowHealthBar()
+void AEnemy::ShowOverlayWidget(UWidgetComponent* WidgetComponent)
 {
-	GetWorldTimerManager().ClearTimer(HealthBarTimer);
-	GetWorldTimerManager().SetTimer(
-		HealthBarTimer, 
-		this, 
-		&AEnemy::HideHealthBar, 
-		HealthBarDisplayTime
-	);
-
-	HealthBar->SetVisibility(true);
-	bShouldRotateTheHealthBar = true;
-
+	if (WidgetComponent)
+	{
+		FTimerHandle OverlayWidgetTimer;
+		FTimerDelegate OverlayWidgetDelegate;
+		OverlayWidgetDelegate.BindUFunction(this, FName("HideOverlayWidget"), WidgetComponent);
+		GetWorld()->GetTimerManager().SetTimer(
+			OverlayWidgetTimer,
+			OverlayWidgetDelegate,
+			OverlayWidgetDisplayTime,
+			false
+		);
+		WidgetComponent->SetVisibility(true);
+	}
 }
 
-void AEnemy::HideHealthBar()
+void AEnemy::HideOverlayWidget(UWidgetComponent* WidgetComponent)
 {
-	HealthBar->SetVisibility(false);
-	bShouldRotateTheHealthBar = false;
+	if (WidgetComponent)
+	{
+		WidgetComponent->SetVisibility(false);
+	}
 }
 
 void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocation)
 {
-		FRotator WidgetRotation = HealthBar->GetRelativeRotation();
+	if (Widget)
+	{
+		FRotator WidgetRotation = Widget->GetRelativeRotation();
 		FVector Direction = PlayerLocation - GetActorLocation();
 		FRotator Rotation = FRotationMatrix::MakeFromX(Direction).Rotator();
-		HealthBar->SetWorldRotation(FRotator(0.f, Rotation.Yaw, 0.f));
+		Widget->SetWorldRotation(FRotator(0.f, Rotation.Yaw, 0.f));
+	}
 }
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (!bDying)
 	{
+		float DamageToHealth = DamageAmount;
+
 		// Stop rotation to player
 		ToggleRotateToPlayer(false);
 
@@ -816,19 +841,27 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 				DamageCauser
 			);
 		}
+		if (Shield > 0.f)
+		{
+			if (Shield >= DamageAmount)
+			{
+				Shield = FMath::Clamp(Shield - DamageAmount, 0.f, MaxShield);
+				DamageToHealth = 0.f;
+			}
+			else
+			{
+				DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0.f, DamageAmount);
+				Shield = 0.f;
+			}
+		}
 
-		if (Health - DamageAmount <= 0.f)
+		Health = FMath::Clamp(Health - DamageToHealth, 0.f, MaxHealth);
+
+		if (Health <= 0.f)
 		{
 			Health = 0.f;
-
 			UpdatePlayerKillCounter(EventInstigator->GetPawn());
-			
 			Die();
-
-		}
-		else
-		{
-			Health -= DamageAmount;
 		}
 	}
 	return Health;
@@ -845,7 +878,8 @@ void AEnemy::Die()
 
 	bDying = true;
 
-	HideHealthBar();
+	HideOverlayWidget(HealthBar);
+	HideOverlayWidget(ShieldBar);
 	
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
