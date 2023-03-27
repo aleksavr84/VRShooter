@@ -454,6 +454,15 @@ private:
 	bool bEnemiesSpawningStarted = false;
 	bool bEnemiesSpawning = false;
 
+	FTimerHandle PlayerCantHurtTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
+	float PlayerCantHurtTime = 5.f;
+
+	void SetPlayerCantHurtForAWhile();
+	void ResetPlayerCantHurt();
+	bool bPlayerCanHurt = true;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
 	int32 MaxNumberOfSpawnedEnemies = 5;
 	
@@ -474,8 +483,9 @@ private:
 	FTimerHandle RestartEnemySpawnTimer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = SpawningEnemies, meta = (AllowPrivateAccess = "true"))
-	float RestartEnemySpawnTime = 2.f;
+	float RestartEnemySpawnTime = 10.f;
 
+	UFUNCTION(BlueprintCallable)
 	void StartRestartEnemySpawnTimer();
 
 	// First Spawning Point for the Enemy spawner
@@ -488,6 +498,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Initialization, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
 	bool bRagdollDisabled = false;
+
+	UPROPERTY(EditAnywhere, Category = Initialization, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
+		bool bIsBossEnemy = false;
 
 	FVector GetRandomSpawningPoint();
 	void SpawnEnemies();

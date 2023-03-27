@@ -522,7 +522,8 @@ void AEnemy::StartRestartEnemySpawnTimer()
 	if (EnemyToSpawnClasses.Num() > 0 &&
 		Shield > 0.f &&
 		SpawnedEnemies.Num() == 0 &&
-		!bEnemiesSpawningStarted)
+		!bEnemiesSpawningStarted &&
+		!bDying)
 	{
 		bEnemiesSpawningStarted = true;
 
@@ -538,7 +539,8 @@ void AEnemy::StartRestartEnemySpawnTimer()
 void AEnemy::SpawnEnemies()
 {
 	if (EnemyToSpawnClasses.Num() > 0 &&
-		SpawnedEnemies.Num() == 0)
+		SpawnedEnemies.Num() == 0 &&
+		!bDying)
 	{
 		if (EnemyController)
 		{
@@ -547,6 +549,7 @@ void AEnemy::SpawnEnemies()
 				true
 			);
 		}
+
 		bEnemiesSpawning = true;
 		bCanHitReact = false;
 
@@ -573,7 +576,8 @@ void AEnemy::StartEnemySpawnTimer()
 
 void AEnemy::PlaySpawningEnemyMontage()
 {
-	if (SpawningEnemiesMontage)
+	if (SpawningEnemiesMontage &&
+		!bDying)
 	{
 		// TODO: Create a generic MontagePlay function to Playing HitReact, Attack, Death, Spell animations
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -588,7 +592,8 @@ void AEnemy::PlaySpawningEnemyMontage()
 // It's called in AnimBP (AnimNotify, afet montage played)
 void AEnemy::SpawnEnemy()
 {
-	if (EnemyToSpawnClass)
+	if (EnemyToSpawnClass &&
+		!bDying)
 	{
 		FVector EnemyLocation = GetActorLocation() + EnemySpawnOffset;
 		FTransform SpawnedEnemyTransform = FTransform(FQuat(GetActorRotation()), FVector(EnemyLocation.X, EnemyLocation.Y, 268), FVector(1.f));
@@ -619,10 +624,28 @@ void AEnemy::SpawnEnemy()
 					TEXT("SpawningEnemy"),
 					false
 				);
+
+				SetPlayerCantHurtForAWhile();
 			}
 		}
-		
 	}
+}
+
+void AEnemy::SetPlayerCantHurtForAWhile()
+{
+	bPlayerCanHurt = false;
+
+	GetWorldTimerManager().SetTimer(
+		PlayerCantHurtTimer,
+		this,
+		&AEnemy::ResetPlayerCantHurt,
+		PlayerCantHurtTime
+	);
+}
+
+void AEnemy::ResetPlayerCantHurt()
+{
+	bPlayerCanHurt = true;
 }
 
 FVector AEnemy::GetRandomSpawningPoint()
@@ -761,7 +784,9 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 		ShowOverlayWidget(ShieldBar);
 	}
 
-	if (!bEnemiesSpawning)
+	if (!bEnemiesSpawning &&
+		bPlayerCanHurt &&
+		!bIsBossEnemy)
 	{
 		// Determine whether bullet hit stunns
 		const float Stunned = FMath::FRandRange(0.f, 1.f);
@@ -853,28 +878,30 @@ void AEnemy::ResetStunn()
 void AEnemy::ShowHitNumber(AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot)
 {
 	// HitNumber will be only showed if no Spawned Enemies exists
-	if (SpawnedEnemies.Num() != 0) return;
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.Instigator = this;
-	UWorld* World = GetWorld();
-
-	if (World)
+	if (SpawnedEnemies.Num() == 0
+		&& bPlayerCanHurt)
 	{
-		AWidgetActor* HitNumberWidgetActor = World->SpawnActor<AWidgetActor>(
-			WidgetActorClass,
-			HitLocation,
-			GetActorRotation(),
-			SpawnParams
-			);
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.Instigator = this;
+		UWorld* World = GetWorld();
 
-		if (HitNumberWidgetActor &&
-			Causer)
+		if (World)
 		{
-			HitNumberWidgetActor->SetShooterCharacter(Causer);
-			HitNumberWidgetActor->SetTextAndStartAnimation(FString::Printf(TEXT("%d"), Damage), bHeadShot);
-			StoreHitNumber(HitNumberWidgetActor, HitLocation);
+			AWidgetActor* HitNumberWidgetActor = World->SpawnActor<AWidgetActor>(
+				WidgetActorClass,
+				HitLocation,
+				GetActorRotation(),
+				SpawnParams
+				);
+
+			if (HitNumberWidgetActor &&
+				Causer)
+			{
+				HitNumberWidgetActor->SetShooterCharacter(Causer);
+				HitNumberWidgetActor->SetTextAndStartAnimation(FString::Printf(TEXT("%d"), Damage), bHeadShot);
+				StoreHitNumber(HitNumberWidgetActor, HitLocation);
+			}
 		}
 	}
 }
@@ -928,15 +955,18 @@ void AEnemy::ShowOverlayWidget(UWidgetComponent* WidgetComponent)
 {
 	if (WidgetComponent)
 	{
-		FTimerHandle OverlayWidgetTimer;
-		FTimerDelegate OverlayWidgetDelegate;
-		OverlayWidgetDelegate.BindUFunction(this, FName("HideOverlayWidget"), WidgetComponent);
-		GetWorld()->GetTimerManager().SetTimer(
-			OverlayWidgetTimer,
-			OverlayWidgetDelegate,
-			OverlayWidgetDisplayTime,
-			false
-		);
+		if (!bIsBossEnemy)
+		{
+			FTimerHandle OverlayWidgetTimer;
+			FTimerDelegate OverlayWidgetDelegate;
+			OverlayWidgetDelegate.BindUFunction(this, FName("HideOverlayWidget"), WidgetComponent);
+			GetWorld()->GetTimerManager().SetTimer(
+				OverlayWidgetTimer,
+				OverlayWidgetDelegate,
+				OverlayWidgetDisplayTime,
+				false
+			);
+		}
 		WidgetComponent->SetVisibility(true);
 	}
 }
@@ -962,7 +992,8 @@ void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocati
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (!bDying && !bEnemiesSpawning)
+	if (!bDying && 		
+		bPlayerCanHurt)
 	{
 		float DamageToHealth = DamageAmount;
 
@@ -1000,6 +1031,7 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 				Health = 0.f;
 				UpdatePlayerKillCounter(EventInstigator->GetPawn());
 				Die();
+
 			}
 		}
 	}
@@ -1359,6 +1391,5 @@ void AEnemy::DestroyEnemy()
 			GetActorLocation()
 		);
 	}
-
 	Destroy();
 }
