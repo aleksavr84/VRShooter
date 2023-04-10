@@ -12,7 +12,7 @@ AItem::AItem()
 	PrimaryActorTick.bCanEverTick = true;
 
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
-	CollisionBox->SetupAttachment(ItemSkeletalMesh);
+	//CollisionBox->SetupAttachment(ItemSkeletalMesh);
 	CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
@@ -117,8 +117,6 @@ void AItem::Tick(float DeltaTime)
 		(ItemState == EItemState::EIS_Pickup ||
 		ItemState == EItemState::EIS_EquipInterping))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("GetValidMeshComponent() &&"));
-
 		GetItemStaticMesh()->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
 		GetItemSkeletalMesh()->AddWorldRotation(FRotator(0.f, BaseTurnRate * DeltaTime, 0.f));
 	}

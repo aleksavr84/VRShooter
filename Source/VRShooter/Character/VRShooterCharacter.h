@@ -83,6 +83,10 @@ private:
 	void FiveKeyPressed();
 	void SwitchInventoryItem(float Value);
 
+	// Special Attack
+	void SetSpecialAttackTarget();
+	void StartSpecialAttack();
+
 	// Teleport
 	void BeginTeleport();
 	void FinishTeleport();
@@ -315,10 +319,16 @@ private:
 	FTimerHandle PostProcessEffectTimer;
 	FPostProcessSettings CurrentPostProcess;
 
+	// Special Attacks
+	bool bShowSpecialAttackTarget = false;
+	bool bSpecialAttackStarted = false;
+	FVector SpecialAttackTargetLocation;
+
 public:
 	FORCEINLINE UCameraComponent* GetCameraComponent() const { return Camera; }
 	FORCEINLINE USkeletalMeshComponent* GetBodyMesh() const { return BodyMesh; }
 	FORCEINLINE AHandController* GetRightHandController() const { return RightController; }
+	FORCEINLINE AHandController* GetLeftHandController() const { return LeftController; }
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return Combat; }
 	FORCEINLINE bool ShouldPlayPickupSound() const { return bShouldPlayPickupSound; }
@@ -369,4 +379,6 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetResetCameraPostProcessDetails(FPostProcessSettings PostProcessSettings, bool bSet);
+
+	FTransform GetTeleportSocketTransform();
 };

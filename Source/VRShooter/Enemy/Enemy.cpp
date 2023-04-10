@@ -15,6 +15,7 @@
 #include "Components/BoxComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 #include "GameFramework/Controller.h"
 #include "Components/CapsuleComponent.h"
 #include "Camera/CameraShakeBase.h"
@@ -462,18 +463,54 @@ void AEnemy::SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName)
 				Victim->GetBloodParticles(),
 				SocketTransform
 			);
+
+			//BloodParticleSystemComponent->OnParticleCollide.AddDynamic(this, &AEnemy::OnBloodParticleCollide);
 		}
 
 		if (Victim->GetBloodNiagara())
 		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			SpawnBloodNiagara(Victim->GetBloodNiagara(), SocketTransform.GetLocation());
+			/*UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 				this,
 				Victim->GetBloodNiagara(),
 				SocketTransform.GetLocation(),
 				GetActorRotation()
-			);
+			);*/
 		}
 	}
+}
+
+void AEnemy::SpawnBloodNiagara(UNiagaraSystem* NiagaraSystem, FVector Location)
+{
+	UNiagaraComponent* SpawnedNiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		this,
+		NiagaraSystem,
+		Location,
+		GetActorRotation()
+	);
+
+	if (SpawnedNiagaraComp)
+	{
+		SpawnedNiagaraComp->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnBloodNiagaraBeginOverlap);
+		SpawnedNiagaraComp->OnComponentHit.AddDynamic(this, &AEnemy::OnBloodNiagaraHit);
+		SpawnedNiagaraComp->SetNiagaraVariableObject("User.Data", this);
+		//UE_LOG(LogTemp, Warning, TEXT("BloodNiagaraComponent"));
+	}
+}
+
+void AEnemy::OnBloodParticleCollide(FName EventName, float EmitterTime, int32 ParticleTime, FVector Location, FVector Velocity, FVector Direction, FVector Normal, FName BoneName, UPhysicalMaterial* PhysMat)
+{
+	UE_LOG(LogTemp, Warning, TEXT("OnBloodParticleCollide"));
+}
+
+void AEnemy::OnBloodNiagaraBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+{
+	UE_LOG(LogTemp, Warning, TEXT("OnBloodNiagaraBeginOverlap"));
+}
+
+void AEnemy::OnBloodNiagaraHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	UE_LOG(LogTemp, Warning, TEXT("OnBloodNiagaraHit"));
 }
 
 void AEnemy::SpawningProjectile()
@@ -697,12 +734,13 @@ void AEnemy::DoDamage(AVRShooterCharacter* Victim, bool bRadialDamage)
 
 		if (ExplosionNiagara)
 		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			SpawnBloodNiagara(ExplosionNiagara, GetActorLocation());
+			/*UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 				this,
 				ExplosionNiagara,
 				GetActorLocation(),
 				GetActorRotation()
-			);
+			);*/
 		}
 	} 
 	else
@@ -755,12 +793,23 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult, AActor* Shooter, ACo
 
 	if (BloodNiagara)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		SpawnBloodNiagara(BloodNiagara, HitResult.Location);
+
+		/*BloodNiagaraComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			this,
 			BloodNiagara,
 			HitResult.Location,
 			GetActorRotation()
-		);
+		);*/
+		
+		
+		//if (BloodNiagaraComponent)
+		//{
+		//	BloodNiagaraComponent->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::OnBloodNiagaraBeginOverlap);
+		//	BloodNiagaraComponent->OnComponentHit.AddDynamic(this, &AEnemy::OnBloodNiagaraHit);
+		//	BloodNiagaraComponent->SetNiagaraVariableObject("User.Data", this);
+		//	//UE_LOG(LogTemp, Warning, TEXT("BloodNiagaraComponent"));
+		//}
 	}
 
 	if (bDying)
@@ -838,8 +887,8 @@ void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation, FName Bone)
 
 	Impulse *= 9'000;
 
-	GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
-	AddHitReactImpulse(Impulse, HitLocation, Bone, false);
+	//GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
+	//AddHitReactImpulse(Impulse, HitLocation, Bone, false);
 }
 
 void AEnemy::AddHitReactImpulse_Implementation(FVector Impulse, FVector HitLocation, FName Bone, bool bAddImpulse)
@@ -992,9 +1041,12 @@ void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocati
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	//UE_LOG(LogTemp, Error, TEXT("Dying: %d"), bDying);
+	//UE_LOG(LogTemp, Error, TEXT("PlayerCanHurt: %d"), bPlayerCanHurt);
 	if (!bDying && 		
 		bPlayerCanHurt)
 	{
+		//UE_LOG(LogTemp, Error, TEXT("if statement %f"), DamageAmount);
 		float DamageToHealth = DamageAmount;
 
 		// Stop rotation to player
@@ -1364,12 +1416,13 @@ void AEnemy::DestroyEnemy()
 {
 	if (DeathNiagara)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			this,
-			DeathNiagara,
-			GetMesh()->GetComponentLocation(),
-			GetActorRotation()
-		);
+		SpawnBloodNiagara(DeathNiagara, GetMesh()->GetComponentLocation());
+		//UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		//	this,
+		//	DeathNiagara,
+		//	GetMesh()->GetComponentLocation(),
+		//	GetActorRotation()
+		//);
 	}
 
 	if (DeathCameraShake)
@@ -1391,5 +1444,6 @@ void AEnemy::DestroyEnemy()
 			GetActorLocation()
 		);
 	}
+
 	Destroy();
 }

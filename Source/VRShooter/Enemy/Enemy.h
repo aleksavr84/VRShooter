@@ -72,6 +72,38 @@ protected:
 
 	void DoDamage(class AVRShooterCharacter* Victim, bool bRadialDamage = false);
 	void SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName);
+	void SpawnBloodNiagara(class UNiagaraSystem* NiagaraSystem, FVector Location);
+
+	UFUNCTION()
+	void OnBloodParticleCollide(
+		FName EventName, 
+		float EmitterTime, 
+		int32 ParticleTime, 
+		FVector Location, FVector Velocity, 
+		FVector Direction, 
+		FVector Normal, 
+		FName BoneName, 
+		UPhysicalMaterial* PhysMat
+	);
+
+	UFUNCTION()
+	void OnBloodNiagaraBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bfromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION()
+	virtual void OnBloodNiagaraHit(
+		UPrimitiveComponent* HitComp, 
+		AActor* OtherActor, 
+		UPrimitiveComponent* OtherComp, 
+		FVector NormalImpulse, 
+		const FHitResult& Hit
+	);
 
 private:
 	void ShowOverlayWidget(UWidgetComponent* WidgetComponent);
@@ -291,8 +323,12 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UParticleSystem* BloodParticles;
 
+	//UParticleSystemComponent* BloodParticleSystemComponent;
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	//class UNiagaraComponent* BloodNiagaraComponent;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	class UNiagaraSystem* BodyBloodNiagara;
+	UNiagaraSystem* BodyBloodNiagara;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UNiagaraSystem* HeadBloodNiagara;

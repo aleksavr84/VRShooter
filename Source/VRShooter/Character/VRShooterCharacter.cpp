@@ -189,8 +189,15 @@ void AVRShooterCharacter::Tick(float DeltaTime)
 	AddActorWorldOffset(NewCameraOffset);
 	VRRoot->AddWorldOffset(-NewCameraOffset);
 
+	// Teleport
 	//UpdateDestinationMarker();
 	
+	// Special Attack Targeting
+	if (bShowSpecialAttackTarget)
+	{
+		UpdateDestinationMarker();
+	}
+
 	//UpdateBlinkers();
 
 	TraceForItems();
@@ -334,8 +341,7 @@ void AVRShooterCharacter::ShowWeaponHUD()
 
 bool AVRShooterCharacter::FindTeleportDestination(TArray<FVector>& OutPath, FVector& OutLocation)
 {
-	const USkeletalMeshSocket* TeleportSocket = BodyMesh->GetSocketByName(FName("LeftHandTeleportSocket"));
-	FTransform TeleportSocketTransform = TeleportSocket->GetSocketTransform(BodyMesh);
+	FTransform TeleportSocketTransform = GetTeleportSocketTransform();
 	
 	FVector Start = TeleportSocketTransform.GetLocation(); //LeftController->GetActorLocation();
 	FVector Look = LeftController->GetActorForwardVector() * -1;
@@ -383,13 +389,13 @@ bool AVRShooterCharacter::FindTeleportDestination(TArray<FVector>& OutPath, FVec
 void AVRShooterCharacter::UpdateDestinationMarker()
 {
 	TArray<FVector> Path;
-	FVector Location;
-	bool bHasDestination = FindTeleportDestination(Path, Location);
+	//FVector Location;
+	bool bHasDestination = FindTeleportDestination(Path, SpecialAttackTargetLocation);
 
 	if (bHasDestination)
 	{
 		DestinationMarker->SetVisibility(true);
-		DestinationMarker->SetWorldLocation(Location);
+		DestinationMarker->SetWorldLocation(SpecialAttackTargetLocation);
 
 		DrawTeleportPath(Path);
 	}
@@ -398,7 +404,9 @@ void AVRShooterCharacter::UpdateDestinationMarker()
 		DestinationMarker->SetVisibility(false);
 
 		TArray<FVector> EmptyPath;
+		FVector EmptyLocation;
 		DrawTeleportPath(EmptyPath);
+		SpecialAttackTargetLocation = EmptyLocation;
 	}
 }
 
@@ -719,7 +727,8 @@ void AVRShooterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	
 	PlayerInputComponent->BindAxis(TEXT("Right"), this, &AVRShooterCharacter::MoveRight);
 	
-	PlayerInputComponent->BindAction(TEXT("Teleport"), IE_Released, this, &AVRShooterCharacter::BeginTeleport);
+	PlayerInputComponent->BindAction(TEXT("Teleport"), IE_Pressed, this, &AVRShooterCharacter::SetSpecialAttackTarget);
+	PlayerInputComponent->BindAction(TEXT("Teleport"), IE_Released, this, &AVRShooterCharacter::StartSpecialAttack);
 	
 	PlayerInputComponent->BindAction(TEXT("GripLeft"), IE_Pressed, this, &AVRShooterCharacter::GripLeft);
 	PlayerInputComponent->BindAction(TEXT("GripLeft"), IE_Released, this, &AVRShooterCharacter::ReleaseLeft);
@@ -768,10 +777,26 @@ void AVRShooterCharacter::MoveRight(float value)
 	}
 }
 
+void AVRShooterCharacter::SetSpecialAttackTarget()
+{
+	bShowSpecialAttackTarget = true;
+}
+
+void AVRShooterCharacter::StartSpecialAttack()
+{
+	bSpecialAttackStarted = true;
+	bShowSpecialAttackTarget = false;
+
+	if (Combat)
+	{
+		Combat->StartSpecialAttack(SpecialAttackTargetLocation);
+	}
+}
+
 void AVRShooterCharacter::BeginTeleport()
 {
 	StartFade(0, 1, TeleportFadeTime);
-	UE_LOG(LogTemp, Error, TEXT("BeginTeleport"));
+	//UE_LOG(LogTemp, Error, TEXT("BeginTeleport"));
 	FTimerHandle Handle;
 
 	GetWorldTimerManager().SetTimer(
@@ -784,7 +809,7 @@ void AVRShooterCharacter::BeginTeleport()
 
 void AVRShooterCharacter::StartFade(float FromAlpha, float ToAlpha, float FadeTime)
 {
-	UE_LOG(LogTemp, Error, TEXT("StartFade"));
+	//UE_LOG(LogTemp, Error, TEXT("StartFade"));
 	PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Controller) : PlayerController;
 
 	if (PlayerController)
@@ -808,7 +833,7 @@ void AVRShooterCharacter::FinishTeleport()
 	SetActorLocation(Destination);
 
 	StartFade(1, 0, TeleportFadeTime);
-	UE_LOG(LogTemp, Error, TEXT("FinishTeleport"));
+	//UE_LOG(LogTemp, Error, TEXT("FinishTeleport"));
 }
 
 void AVRShooterCharacter::FireButtonPressed()
@@ -1035,6 +1060,17 @@ void AVRShooterCharacter::StartPostProcess(FPostProcessSettings PostProcessSetti
 void AVRShooterCharacter::ResetPostProcess()
 {
 	SetResetCameraPostProcessDetails(CurrentPostProcess, false);
+}
+
+FTransform AVRShooterCharacter::GetTeleportSocketTransform()
+{
+	const USkeletalMeshSocket* TeleportSocket = BodyMesh->GetSocketByName(FName("LeftHandTeleportSocket"));
+
+	if (TeleportSocket)
+	{
+		return TeleportSocket->GetSocketTransform(BodyMesh);
+	}
+	return FTransform();
 }
 
 // It's implemented in blueprint

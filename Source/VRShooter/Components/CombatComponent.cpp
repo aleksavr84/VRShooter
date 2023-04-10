@@ -21,6 +21,8 @@
 #include "VRShooter/HUD/VRHUD.h"
 #include "VRShooter/HUD/AnnouncementWidget.h"
 #include "Camera/CameraShakeBase.h"
+#include "VRShooter/Weapon/MagicProjectile.h"
+#include "Kismet/KismetMathLibrary.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -854,6 +856,37 @@ bool UCombatComponent::TraceUnderCrosshairs(FHitResult& OutHitResult)
 	}
 
 	return false;
+}
+
+void UCombatComponent::StartSpecialAttack(FVector Destination)
+{
+	if (SpecialAttackClass &&
+		Character)
+	{
+		FVector LeftMotionControllerLocation = Character->GetTeleportSocketTransform().GetLocation();
+		FRotator LeftMotionControllerRotation = FRotator(Character->GetTeleportSocketTransform().GetRotation());
+		LeftMotionControllerRotation = FRotator(0.f, LeftMotionControllerRotation.Yaw, 0.f);
+		LeftMotionControllerLocation = FVector(LeftMotionControllerLocation.X, LeftMotionControllerLocation.Y, Destination.Z);
+
+		FVector Direction =  (Destination - LeftMotionControllerLocation).GetSafeNormal();
+
+		APawn* InstigatorPawn = Cast<APawn>(Character);
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = Character;
+		SpawnParams.Instigator = InstigatorPawn;
+		UWorld* World = GetWorld();
+
+		if (World)
+		{
+			World->SpawnActor<AMagicProjectile>(
+				SpecialAttackClass,
+				LeftMotionControllerLocation + (Direction * 300.f),
+				LeftMotionControllerRotation,
+				SpawnParams
+				);
+		}
+	}
 }
 
 void UCombatComponent::MeleeAttack(AActor* OtherActor, AHandController* HandController)

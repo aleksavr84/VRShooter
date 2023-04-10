@@ -7,15 +7,16 @@
 AAmmo::AAmmo()
 {
 	//AmmoMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AmmoMesh"));
-	//SetRootComponent(AmmoMesh);
-
-	GetCollisionBox()->SetupAttachment(GetRootComponent());
+	
+	//SetRootComponent(GetRootComponent());
+	//SetRootComponent(GetCollisionBox());
+	/*GetCollisionBox()->SetupAttachment(GetRootComponent());
 	GetPickupWidget()->SetupAttachment(GetRootComponent());
-	GetAreaSphere()->SetupAttachment(GetRootComponent());
+	GetAreaSphere()->SetupAttachment(GetRootComponent());*/
 
-	AmmoCollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AmmoColisionSphere"));
-	AmmoCollisionSphere->SetupAttachment(GetRootComponent());
-	AmmoCollisionSphere->SetSphereRadius(50.f);
+	//AmmoCollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AmmoColisionSphere"));
+	////AmmoCollisionSphere->SetupAttachment(GetRootComponent());
+	//AmmoCollisionSphere->SetSphereRadius(50.f);
 }
 
 void AAmmo::Tick(float DeltaTime)
@@ -26,12 +27,29 @@ void AAmmo::Tick(float DeltaTime)
 void AAmmo::BeginPlay()
 {
 	Super::BeginPlay();
-
-	AmmoCollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AAmmo::AmmoSphereOverlap);
+	//GetCollisionBox()->OnComponentBeginOverlap.AddDynamic(this, &AAmmo::AmmoSphereOverlap);
+	//AmmoCollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AAmmo::AmmoSphereOverlap);
 }
 
-void AAmmo::AmmoSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+//void AAmmo::AmmoSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
+//{
+//	if (OtherActor)
+//	{
+//		auto OverlappedCharacter = Cast<AVRShooterCharacter>(OtherActor);
+//
+//		if (OverlappedCharacter)
+//		{
+//			StartItemCurve(OverlappedCharacter);
+//			GetCollisionBox()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+//			//AmmoCollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+//		}
+//	}
+//}
+
+void AAmmo::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
 {
+	Super::OnSphereOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bfromSweep, SweepResult);
+
 	if (OtherActor)
 	{
 		auto OverlappedCharacter = Cast<AVRShooterCharacter>(OtherActor);
@@ -39,7 +57,8 @@ void AAmmo::AmmoSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* 
 		if (OverlappedCharacter)
 		{
 			StartItemCurve(OverlappedCharacter);
-			AmmoCollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			GetCollisionBox()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			//AmmoCollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		}
 	}
 }
@@ -52,7 +71,6 @@ void AAmmo::SetItemProperties(EItemState State)
 	{
 	case EItemState::EIS_Pickup:
 		// Set Mesh properties
-		UE_LOG(LogTemp, Warning, TEXT("GetItemStaticMesh()"));
 		GetValidMeshComponent()->SetSimulatePhysics(false);
 		GetValidMeshComponent()->SetEnableGravity(false);
 		GetValidMeshComponent()->SetVisibility(true);

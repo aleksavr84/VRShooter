@@ -71,6 +71,9 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void ReleaseClip();
 
+	// Special Attack
+	void StartSpecialAttack(FVector Destination);
+
 	// Melee Attack
 	void MeleeAttack(AActor* OtherActor, class AHandController* HandController);
 
@@ -315,6 +318,10 @@ private:
 
 	// VFX
 	void PlayCameraShake();
+
+	// Special Attacks
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class AMagicProjectile> SpecialAttackClass;
 
 public:
 	UFUNCTION(BlueprintCallable, meta = (AllowPrivateAccess = "true"))

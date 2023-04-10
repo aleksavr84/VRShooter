@@ -43,7 +43,7 @@ protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 	UFUNCTION()
-	void OnSphereOverlap(
+	virtual void OnSphereOverlap(
 		UPrimitiveComponent* OverlappedComponent, 
 		AActor* OtherActor, 
 		UPrimitiveComponent* OtherComp,
