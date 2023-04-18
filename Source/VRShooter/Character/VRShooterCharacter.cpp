@@ -97,6 +97,13 @@ void AVRShooterCharacter::BeginPlay()
 
 	DestinationMarker->SetVisibility(false);
 
+	if (TakeDamageMaterialBase)
+	{
+		TakeDamageMaterialInstance = UMaterialInstanceDynamic::Create(TakeDamageMaterialBase, this);
+		PostProcessComponent->AddOrUpdateBlendable(TakeDamageMaterialInstance);
+		PostProcessComponent->BlendWeight = 0.f;
+	}
+
 	if (BlinkerMaterialBase)
 	{
 		BlinkerMaterialInstance = UMaterialInstanceDynamic::Create(BlinkerMaterialBase, this);
@@ -469,6 +476,16 @@ void AVRShooterCharacter::UpdateBlinkers()
 
 		BlinkerMaterialInstance->SetVectorParameterValue(TEXT("Center"), FLinearColor(Center.X, Center.Y, 0));
 	}
+}
+
+void AVRShooterCharacter::SetTakeDamagePostProcess()
+{
+	PostProcessComponent->BlendWeight = 1.f;
+}
+
+void AVRShooterCharacter::ResetTakeDamagePostProcess()
+{
+	PostProcessComponent->BlendWeight = 0.f;
 }
 
 void AVRShooterCharacter::DrawTeleportPath(const TArray<FVector>& Path)
@@ -1043,7 +1060,7 @@ void AVRShooterCharacter::PlayCameraShake()
 	}
 }
 
-void AVRShooterCharacter::StartPostProcess(FPostProcessSettings PostProcessSettings, float PostProcessEffectTime)
+void AVRShooterCharacter::StartPostProcess(FPostProcessSettings PostProcessSettings, float PostProcessEffectTime, bool bMaterialChange)
 {
 	CurrentPostProcess = PostProcessSettings;
 
@@ -1055,11 +1072,17 @@ void AVRShooterCharacter::StartPostProcess(FPostProcessSettings PostProcessSetti
 	);
 
 	SetResetCameraPostProcessDetails(CurrentPostProcess, true);
+	
+	if (bMaterialChange)
+	{
+		SetTakeDamagePostProcess();
+	}
 }
 
 void AVRShooterCharacter::ResetPostProcess()
 {
 	SetResetCameraPostProcessDetails(CurrentPostProcess, false);
+	ResetTakeDamagePostProcess();
 }
 
 FTransform AVRShooterCharacter::GetTeleportSocketTransform()

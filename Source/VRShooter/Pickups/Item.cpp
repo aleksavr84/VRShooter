@@ -6,13 +6,14 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 
 AItem::AItem()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
-	//CollisionBox->SetupAttachment(ItemSkeletalMesh);
 	CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 
@@ -20,7 +21,6 @@ AItem::AItem()
 
 	ItemSkeletalMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ItemSkeletalMesh"));
 	ItemSkeletalMesh->SetupAttachment(CollisionBox);
-	//SetRootComponent(ItemSkeletalMesh);
 
 	ItemStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemStaticMesh"));
 	ItemStaticMesh->SetupAttachment(CollisionBox);
@@ -30,6 +30,9 @@ AItem::AItem()
 
 	AreaSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AreaSphere"));
 	AreaSphere->SetupAttachment(CollisionBox);
+
+	MarkerSystemComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("MarkerSystemComponent"));
+	MarkerSystemComponent->SetupAttachment(CollisionBox);
 }
 
 void AItem::OnConstruction(const FTransform& Transform)
@@ -97,7 +100,7 @@ void AItem::BeginPlay()
 		PickupWidget->SetVisibility(false);
 		SetActiveStas();
 	}
-	
+
 	AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AItem::OnSphereOverlap);
 	AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AItem::OnSphereEndOverlap);
 
@@ -402,7 +405,8 @@ void AItem::ItemInterp(float DeltaTime)
 		SetActorLocation(ItemLocation, true, nullptr, ETeleportType::TeleportPhysics);
 
 		// Camera rotation this frame
-		const FRotator CameraRotation{ ShooterCharacter->GetCameraComponent()->GetComponentRotation() };
+		FRotator CameraRotation{ ShooterCharacter->GetCameraComponent()->GetComponentRotation() };
+		
 		// Camera rotation plus initial Yaw offset
 		FRotator ItemRotation{ 0.f, CameraRotation.Yaw + InterpInitialYawOffset ,0.f };
 		SetActorRotation(ItemRotation, ETeleportType::TeleportPhysics);
@@ -428,6 +432,9 @@ void AItem::StartItemCurve(AVRShooterCharacter* Character, bool bForcePlaySound)
 		ShooterCharacter->IncrementInterpLocItemCount(InterpLocIndex, 1);
 
 		PlayPickupSound(bForcePlaySound);
+
+		// Hide Marker
+		MarkerSystemComponent->SetVisibility(false);
 
 		// Store initial location of the item
 		ItemInterpStartLocation = GetActorLocation();

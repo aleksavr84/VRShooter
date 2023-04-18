@@ -33,6 +33,8 @@ protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	// Firing
+	void LineTraceFromWeapon(float DeltaTime);
+
 	void FireButtonPressed();
 	void FireButtonReleased();
 	void StartFireTimer();
@@ -155,6 +157,9 @@ private:
 	// Automatic Fire
 	bool bFireButtonPressed = false;
 	bool bShouldFire = true;
+	FHitResult FireHit;
+	FVector BoneBreakImpulse;
+	FTransform SocketTransform;
 	FTimerHandle AutoFireTimer;
 	
 	FTimerHandle WeaponReloadTimer;
@@ -228,7 +233,7 @@ private:
 	AWidgetActor* AnnouncementWidgetActor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
-	FVector AnnouncementWidgetLocationOffset = FVector(100.f, -50.f, 0.f);
+	FVector AnnouncementWidgetLocationOffset = FVector(100.f, 0.f, 0.f);
 
 	// Fight for your life:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "True"))
@@ -276,6 +281,16 @@ private:
 	// Generate KillCounterText and update the KillCounterWidgetActor
 	void GenerateKillCounterText(int32 Kills);
 	
+	// Crosshairs
+	UPROPERTY(EditDefaultsOnly, Category = Initialization)
+	TSubclassOf<AWidgetActor> CrosshairsWidgetActorClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	AWidgetActor* CrosshairsWidgetActor;
+
+	FVector CrosshairsLocation;
+	FVector CrosshairsLocationLastFrame;
+
 	// Player Score
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"));
 	int32 PlayerScore = 0;

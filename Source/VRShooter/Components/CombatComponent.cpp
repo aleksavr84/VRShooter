@@ -46,6 +46,8 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	{
 		FightForYourLifeTimeRemaining = Character->GetWorldTimerManager().GetTimerRemaining(FightForYourLifeTimer);
 	}
+
+	LineTraceFromWeapon(DeltaTime);
 }
 
 AWidgetActor* UCombatComponent::SpawnWidgetActor(TSubclassOf<class AWidgetActor> WidgetActorClass, FVector LocationOffset)
@@ -86,6 +88,7 @@ AWeapon* UCombatComponent::SpawnDefaultWeapon()
 	if (DefaultWeaponClass)
 	{
 		bIsEquipped = true;
+
 		// Spawn the Weapon
 		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
 	}
@@ -125,6 +128,18 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip, bool bSwapping)
 			bIsEquipped = true;
 
 			Character->ShowWeaponHUD();
+
+			// TODO: Remove this shit!
+			if (CrosshairsWidgetActorClass &&
+				Character &&
+				EquippedWeapon &&
+				CrosshairsWidgetActor == nullptr)
+			{
+				FActorSpawnParameters SpawnParam;
+				SpawnParam.Instigator = Character;
+				CrosshairsWidgetActor = Character->GetWorld()->SpawnActor<AWidgetActor>(CrosshairsWidgetActorClass, SpawnParam);
+				CrosshairsWidgetActor->AttachToComponent(EquippedWeapon->GetItemSkeletalMesh(), FAttachmentTransformRules::KeepRelativeTransform);
+			}
 		}
 	}
 }
@@ -245,19 +260,18 @@ void UCombatComponent::InitializeAmmoMap()
 
 void UCombatComponent::PickupAmmo(AAmmo* Ammo)
 {
-	
+	// Check to see if AmmoMap contains Ammo's AmmoType
+	if (AmmoMap.Find(Ammo->GetAmmoType()))
+	{
+		// Get amount of ammo in our AmmoMap for Ammo's type
+		int32 AmmoCount{ AmmoMap[Ammo->GetAmmoType()] };
+		AmmoCount += Ammo->GetItemCount();
+		// Set the amount of ammo in the Map for this type
+		AmmoMap[Ammo->GetAmmoType()] = AmmoCount;
+	}
+
 	if (EquippedWeapon)
 	{
-		// Check to see if AmmoMap contains Ammo's AmmoType
-		if (AmmoMap.Find(Ammo->GetAmmoType()))
-		{
-			// Get amount of ammo in our AmmoMap for Ammo's type
-			int32 AmmoCount{ AmmoMap[Ammo->GetAmmoType()] };
-			AmmoCount += Ammo->GetItemCount();
-			// Set the amount of ammo in the Map for this type
-			AmmoMap[Ammo->GetAmmoType()] = AmmoCount;
-		}
-
 		if (EquippedWeapon->GetAmmoType() == Ammo->GetAmmoType())
 		{
 			// Check to see if the gun is empty
@@ -266,9 +280,146 @@ void UCombatComponent::PickupAmmo(AAmmo* Ammo)
 				ReloadWeapon();
 			}
 		}
+	}
 
-		Ammo->Destroy();
-	
+	Ammo->Destroy();
+}
+
+void UCombatComponent::LineTraceFromWeapon(float DeltaTime)
+{
+	if (EquippedWeapon)
+	{
+		const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemSkeletalMesh();
+
+		if (WeaponMesh)
+		{
+			const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(EquippedWeapon->GetMuzzleFlashSocketName());
+
+			if (BarrelSocket)
+			{
+				SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
+
+				const FVector Start{ SocketTransform.GetLocation() };
+				const FQuat Rotation{ SocketTransform.GetRotation() };
+				const FVector RotationAxis{ Rotation.GetAxisX() };
+				const FVector End{ Start + RotationAxis * 50'000.f };
+				BoneBreakImpulse = Start;
+				BeamEndPoint = End;
+				CrosshairsLocation = Start + RotationAxis * 300.f;
+				
+				GetWorld()->LineTraceSingleByChannel(
+					FireHit,
+					Start,
+					End,
+					ECollisionChannel::ECC_Visibility
+				);
+
+				if (FireHit.bBlockingHit)
+				{
+					BeamEndPoint = FireHit.Location;
+
+					if ((BeamEndPoint - Character->GetActorLocation()).Size() <
+						(CrosshairsLocation - Character->GetActorLocation()).Size())
+					{
+						CrosshairsLocation = BeamEndPoint;
+					}
+
+					// Does hit Actor implement BulletHitInterface?
+				//	if (FireHit.GetActor())
+				//	{
+				//		AEnemy* HitEnemy = Cast<AEnemy>(FireHit.GetActor());
+
+				//		if (HitEnemy)
+				//		{
+				//			int32 Damage{};
+
+				//			if (FireHit.BoneName.ToString() == HitEnemy->GetHeadBone())
+				//			{
+				//				// Head shot
+				//				Damage = EquippedWeapon->GetHeadShotDamage();
+				//				//HitEnemy->SwitchBloodParticles(true);
+
+				//				UGameplayStatics::ApplyDamage(
+				//					FireHit.GetActor(),
+				//					Damage,
+				//					Character->GetController(),
+				//					Character,
+				//					UDamageType::StaticClass()
+				//				);
+
+				//				HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
+				//				HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+				//				// Update HitCounter and ScoreMultiplier
+				//				UpdateHitMultiplier(GetHitMultiplier() + 1);
+				//				UpdateHitCounter(Damage);
+				//			}
+				//			else
+				//			{
+				//				// Body shot
+				//				Damage = EquippedWeapon->GetDamage();
+
+				//				UGameplayStatics::ApplyDamage(
+				//					FireHit.GetActor(),
+				//					Damage,
+				//					Character->GetController(),
+				//					Character,
+				//					UDamageType::StaticClass()
+				//				);
+
+				//				HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
+				//				HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+				//				// Update HitCounter and ScoreMultiplier
+				//				UpdateHitCounter(Damage);
+				//			}
+
+				//			// Reset the timers if we make a hit
+				//			StartHitMultiplierTimer();
+				//			StartKillCounterTimer();
+				//		}
+				//	}
+				//	else
+				//	{
+				//		// Spawn default particles
+				//		if (EquippedWeapon->GetImpactParticles())
+				//		{
+				//			UGameplayStatics::SpawnEmitterAtLocation(
+				//				GetWorld(),
+				//				EquippedWeapon->GetImpactParticles(),
+				//				FireHit.Location
+				//			);
+				//		}
+				//	}
+				//}
+
+				//if (EquippedWeapon->GetBeamParticles())
+				//{
+				//	UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+				//		GetWorld(),
+				//		EquippedWeapon->GetBeamParticles(),
+				//		SocketTransform
+				//	);
+
+				//	if (Beam)
+				//	{
+				//		Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+				//	}
+				}
+
+				if (CrosshairsWidgetActor)
+				{
+					FVector CrosshairsLocationInterpolated = FVector(
+						FMath::FInterpTo(CrosshairsLocationLastFrame.X, CrosshairsLocation.X, DeltaTime, 25.f),
+						FMath::FInterpTo(CrosshairsLocationLastFrame.Y, CrosshairsLocation.Y, DeltaTime, 25.f),
+						FMath::FInterpTo(CrosshairsLocationLastFrame.Z, CrosshairsLocation.Z, DeltaTime, 25.f)
+					);
+
+					CrosshairsWidgetActor->SetActorLocation(CrosshairsLocationInterpolated);
+					CrosshairsLocationLastFrame = CrosshairsLocationInterpolated;
+				}
+			}
+		}
 	}
 }
 
@@ -292,6 +443,10 @@ void UCombatComponent::FireWeapon()
 		if (WeaponHasAmmo())
 		{
 			PlayFireSound();
+			if (Character)
+			{
+				Character->StartPostProcess(Character->GetFireWeaponPostProcess(), Character->GetFireWeaponPostProcessTime(), false);
+			}
 			SendBullet();
 			PlayGunFireMontage();
 			PlayHapticEffect();
@@ -317,148 +472,263 @@ void UCombatComponent::SendBullet()
 	if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_GrenadeLauncher) return;
 
 	StartHitMultiplierTimer();
-	
+
 	// Send bullet
-	const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemSkeletalMesh();
-
-	if (WeaponMesh)
+	if (EquippedWeapon->GetMuzzleFlash())
 	{
-		const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(EquippedWeapon->GetMuzzleFlashSocketName());
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
+	}
 
-		if (BarrelSocket)
+	if (EquippedWeapon->GetMuzzleFlashNiagara())
+	{
+		UNiagaraComponent* MuzzleFlashN = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			this,
+			EquippedWeapon->GetMuzzleFlashNiagara(),
+			SocketTransform.GetLocation(),
+			EquippedWeapon->GetActorRotation()
+		);
+		MuzzleFlashN->SetWorldRotation(SocketTransform.Rotator());
+	}
+
+	if (FireHit.bBlockingHit)
+	{
+		IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(FireHit.GetActor());
+
+		if (BulletHitInterface)
 		{
-			const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
+			BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
+		}
 
-			if (EquippedWeapon->GetMuzzleFlash())
+		// Does hit Actor implement BulletHitInterface?
+		if (FireHit.GetActor())
+		{
+			AEnemy* HitEnemy = Cast<AEnemy>(FireHit.GetActor());
+
+			if (HitEnemy)
 			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
-			}
+				int32 Damage{};
 
-			if (EquippedWeapon->GetMuzzleFlashNiagara())
-			{
-				UNiagaraComponent* MuzzleFlashN = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-					this,
-					EquippedWeapon->GetMuzzleFlashNiagara(),
-					SocketTransform.GetLocation(),
-					EquippedWeapon->GetActorRotation()
-				);
-				MuzzleFlashN->SetWorldRotation(SocketTransform.Rotator());
-			}
-
-			FHitResult FireHit;
-			const FVector Start{ SocketTransform.GetLocation() };
-			const FQuat Rotation{ SocketTransform.GetRotation() };
-			const FVector RotationAxis{ Rotation.GetAxisX() };
-			const FVector End{ Start + RotationAxis * 50'000.f };
-			FVector BoneBreakImpulse{ Start };
-
-			BeamEndPoint = End ;
-
-			GetWorld()->LineTraceSingleByChannel(
-				FireHit,
-				Start,
-				End,
-				ECollisionChannel::ECC_Visibility
-			);
-
-			if (FireHit.bBlockingHit)
-			{
-				/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
-				DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
-				
-				IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(FireHit.GetActor());
-
-				if (BulletHitInterface)
+				if (FireHit.BoneName.ToString() == HitEnemy->GetHeadBone())
 				{
-					BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
-				}
+					// Head shot
+					Damage = EquippedWeapon->GetHeadShotDamage();
+					//HitEnemy->SwitchBloodParticles(true);
 
-				BeamEndPoint = FireHit.Location;
+					UGameplayStatics::ApplyDamage(
+						FireHit.GetActor(),
+						Damage,
+						Character->GetController(),
+						Character,
+						UDamageType::StaticClass()
+					);
 
-				// Does hit Actor implement BulletHitInterface?
-				if (FireHit.GetActor())
-				{
-					AEnemy* HitEnemy = Cast<AEnemy>(FireHit.GetActor());
+					HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
+					HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
 
-					if (HitEnemy)
-					{
-						int32 Damage{};
-
-						if (FireHit.BoneName.ToString() == HitEnemy->GetHeadBone())
-						{
-							// Head shot
-							Damage = EquippedWeapon->GetHeadShotDamage();
-							//HitEnemy->SwitchBloodParticles(true);
-
-							UGameplayStatics::ApplyDamage(
-								FireHit.GetActor(),
-								Damage,
-								Character->GetController(),
-								Character,
-								UDamageType::StaticClass()
-							);
-
-							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
-							HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
-
-							// Update HitCounter and ScoreMultiplier
-							UpdateHitMultiplier(GetHitMultiplier() + 1);
-							UpdateHitCounter(Damage);
-						}
-						else
-						{
-							// Body shot
-							Damage = EquippedWeapon->GetDamage();
-
-							UGameplayStatics::ApplyDamage(
-								FireHit.GetActor(),
-								Damage,
-								Character->GetController(),
-								Character,
-								UDamageType::StaticClass()
-							);
-
-							HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
-							HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
-						
-							// Update HitCounter and ScoreMultiplier
-							UpdateHitCounter(Damage);
-						}
-
-						// Reset the timers if we make a hit
-						StartHitMultiplierTimer();
-						StartKillCounterTimer();
-					}
+					// Update HitCounter and ScoreMultiplier
+					UpdateHitMultiplier(GetHitMultiplier() + 1);
+					UpdateHitCounter(Damage);
 				}
 				else
 				{
-					// Spawn default particles
-					if (EquippedWeapon->GetImpactParticles())
-					{
-						UGameplayStatics::SpawnEmitterAtLocation(
-							GetWorld(),
-							EquippedWeapon->GetImpactParticles(),
-							FireHit.Location
-						);
-					}
+					// Body shot
+					Damage = EquippedWeapon->GetDamage();
+
+					UGameplayStatics::ApplyDamage(
+						FireHit.GetActor(),
+						Damage,
+						Character->GetController(),
+						Character,
+						UDamageType::StaticClass()
+					);
+
+					HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
+					HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+					// Update HitCounter and ScoreMultiplier
+					UpdateHitCounter(Damage);
 				}
+
+				// Reset the timers if we make a hit
+				StartHitMultiplierTimer();
+				StartKillCounterTimer();
 			}
-
-			if (EquippedWeapon->GetBeamParticles())
+		}
+		else
+		{
+			// Spawn default particles
+			if (EquippedWeapon->GetImpactParticles())
 			{
-				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+				UGameplayStatics::SpawnEmitterAtLocation(
 					GetWorld(),
-					EquippedWeapon->GetBeamParticles(),
-					SocketTransform
+					EquippedWeapon->GetImpactParticles(),
+					FireHit.Location
 				);
-
-				if (Beam)
-				{
-					Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
-				}
 			}
 		}
 	}
+
+	if (EquippedWeapon->GetBeamParticles())
+	{
+		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+			GetWorld(),
+			EquippedWeapon->GetBeamParticles(),
+			SocketTransform
+		);
+
+		if (Beam)
+		{
+			Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+		}
+	}
+
+	//
+	//
+	//if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_GrenadeLauncher) return;
+
+	//StartHitMultiplierTimer();
+	//
+	//// Send bullet
+	//const USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetItemSkeletalMesh();
+
+	//if (WeaponMesh)
+	//{
+	//	const USkeletalMeshSocket* BarrelSocket = WeaponMesh->GetSocketByName(EquippedWeapon->GetMuzzleFlashSocketName());
+
+	//	if (BarrelSocket)
+	//	{
+	//		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(WeaponMesh);
+
+	//		if (EquippedWeapon->GetMuzzleFlash())
+	//		{
+	//			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
+	//		}
+
+	//		if (EquippedWeapon->GetMuzzleFlashNiagara())
+	//		{
+	//			UNiagaraComponent* MuzzleFlashN = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+	//				this,
+	//				EquippedWeapon->GetMuzzleFlashNiagara(),
+	//				SocketTransform.GetLocation(),
+	//				EquippedWeapon->GetActorRotation()
+	//			);
+	//			MuzzleFlashN->SetWorldRotation(SocketTransform.Rotator());
+	//		}
+
+	//		FHitResult FireHit;
+	//		const FVector Start{ SocketTransform.GetLocation() };
+	//		const FQuat Rotation{ SocketTransform.GetRotation() };
+	//		const FVector RotationAxis{ Rotation.GetAxisX() };
+	//		const FVector End{ Start + RotationAxis * 50'000.f };
+	//		FVector BoneBreakImpulse{ Start };
+
+	//		BeamEndPoint = End ;
+
+	//		GetWorld()->LineTraceSingleByChannel(
+	//			FireHit,
+	//			Start,
+	//			End,
+	//			ECollisionChannel::ECC_Visibility
+	//		);
+
+	//		if (FireHit.bBlockingHit)
+	//		{
+	//			/*DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 2.f);
+	//			DrawDebugPoint(GetWorld(), FireHit.Location, 5.f, FColor::Red, false, 2.f);*/
+	//			
+	//			IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(FireHit.GetActor());
+
+	//			if (BulletHitInterface)
+	//			{
+	//				BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
+	//			}
+
+	//			BeamEndPoint = FireHit.Location;
+
+	//			// Does hit Actor implement BulletHitInterface?
+	//			if (FireHit.GetActor())
+	//			{
+	//				AEnemy* HitEnemy = Cast<AEnemy>(FireHit.GetActor());
+
+	//				if (HitEnemy)
+	//				{
+	//					int32 Damage{};
+
+	//					if (FireHit.BoneName.ToString() == HitEnemy->GetHeadBone())
+	//					{
+	//						// Head shot
+	//						Damage = EquippedWeapon->GetHeadShotDamage();
+	//						//HitEnemy->SwitchBloodParticles(true);
+
+	//						UGameplayStatics::ApplyDamage(
+	//							FireHit.GetActor(),
+	//							Damage,
+	//							Character->GetController(),
+	//							Character,
+	//							UDamageType::StaticClass()
+	//						);
+
+	//						HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
+	//						HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+	//						// Update HitCounter and ScoreMultiplier
+	//						UpdateHitMultiplier(GetHitMultiplier() + 1);
+	//						UpdateHitCounter(Damage);
+	//					}
+	//					else
+	//					{
+	//						// Body shot
+	//						Damage = EquippedWeapon->GetDamage();
+
+	//						UGameplayStatics::ApplyDamage(
+	//							FireHit.GetActor(),
+	//							Damage,
+	//							Character->GetController(),
+	//							Character,
+	//							UDamageType::StaticClass()
+	//						);
+
+	//						HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
+	//						HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+	//					
+	//						// Update HitCounter and ScoreMultiplier
+	//						UpdateHitCounter(Damage);
+	//					}
+
+	//					// Reset the timers if we make a hit
+	//					StartHitMultiplierTimer();
+	//					StartKillCounterTimer();
+	//				}
+	//			}
+	//			else
+	//			{
+	//				// Spawn default particles
+	//				if (EquippedWeapon->GetImpactParticles())
+	//				{
+	//					UGameplayStatics::SpawnEmitterAtLocation(
+	//						GetWorld(),
+	//						EquippedWeapon->GetImpactParticles(),
+	//						FireHit.Location
+	//					);
+	//				}
+	//			}
+	//		}
+
+	//		if (EquippedWeapon->GetBeamParticles())
+	//		{
+	//			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+	//				GetWorld(),
+	//				EquippedWeapon->GetBeamParticles(),
+	//				SocketTransform
+	//			);
+
+	//			if (Beam)
+	//			{
+	//				Beam->SetVectorParameter(FName("Target"), BeamEndPoint);
+	//			}
+	//		}
+	//	}
+	//}
 }
 
 // Called from the Enemy Class
@@ -477,7 +747,7 @@ void UCombatComponent::UpdateKillCounter(int32 KillsToAdd)
 void UCombatComponent::GenerateKillCounterText(int32 Kills)
 {
 	int32 KillTextNumber = 0;
-
+	
 	if (KillTexts.Num() >= 0 &&
 		KillCounterWidgetActor)
 	{
@@ -654,7 +924,7 @@ void UCombatComponent::FightForYourLife()
 		Character->StartFade(0.f, 1.f, FightForYourLifeTime);
 
 		// PostProcessEffect
-		Character->StartPostProcess(Character->GetFightForYourLifePostProcess(), FightForYourLifeTime);
+		Character->StartPostProcess(Character->GetFightForYourLifePostProcess(), FightForYourLifeTime, false);
 		
 		ShowHideWidget(AnnouncementWidgetActor, true);
 		AnnouncementWidgetActor->SetTextAndStartAnimation(FightForYourLifeText, true);

@@ -174,6 +174,8 @@ void AEnemy::BeginPlay()
 			GetActorLocation()
 		);
 	}
+	// Set MovementSpeed
+	SetMovementSpeed();
 }
 
 void AEnemy::Tick(float DeltaTime)
@@ -217,6 +219,31 @@ void AEnemy::Tick(float DeltaTime)
 void AEnemy::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}
+
+void AEnemy::SetMovementSpeed()
+{
+	if (EnemyController->GetCharacter())
+	{
+		if (bDamagedLeftLeg || bDamagedRightLeg)
+		{
+			EnemyController->GetCharacter()->
+				GetCharacterMovement()->
+				MaxWalkSpeed = MovementSpeedInjured;
+		}
+		else if (bHandicapped)
+		{
+			EnemyController->GetCharacter()->
+				GetCharacterMovement()->
+				MaxWalkSpeed = MovementSpeedCrawl;
+		}
+		else
+		{
+			EnemyController->GetCharacter()->
+				GetCharacterMovement()->
+				MaxWalkSpeed = MovementSpeedNormal;
+		}
+	}
 }
 
 void AEnemy::OnAgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
@@ -270,12 +297,9 @@ void AEnemy::OnCombatRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent
 }
 
 void AEnemy::OnShootingRangeSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bfromSweep, const FHitResult& SweepResult)
-
 {
 	if (OtherActor == nullptr) return;
 
-	// TODO: Aim to Player
-	// TODO: Rotate To Player
 	VRShooterCharacter = Cast<AVRShooterCharacter>(OtherActor);
 	//VRShooterCharacter = VRShooterCharacter == nullptr ? Cast<AVRShooterCharacter>(OtherActor) : VRShooterCharacter;
 	
@@ -318,7 +342,15 @@ void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 		AttackMontage)
 	{
 		AnimInstance->Montage_Play(AttackMontage, PlayRate);
-		AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+		
+		if (Section == "")
+		{
+			AnimInstance->Montage_JumpToSection(GetAttackSectionName(), AttackMontage);
+		}
+		else
+		{
+			AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+		}
 	}
 
 	bCanAttack = false;
@@ -338,19 +370,55 @@ void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 
 FName AEnemy::GetAttackSectionName()
 {
-	const int32 Section{ FMath::RandRange(1, 4) };
+	const int32 Section{ FMath::RandRange(1, 2) };
 	FName SectionName;
 
 	switch (Section)
 	{
 	case 1:
-		SectionName = AttackLFast;
+		// TODO: Attack animation when crawl
+		
+		if (!bDamagedLeftHand)
+		{
+			if (!bHandicapped)
+			{
+				SectionName = AttackLFast;
+			}
+			else 
+			{
+				SectionName = AttackLHandicapped;
+			}
+		}
+		else
+		{
+			if (!bDamagedRightHand)
+			{
+				if (!bHandicapped)
+				{
+					SectionName = AttackRFast;
+				}
+				else
+				{
+					SectionName = AttackRHandicapped;
+				}
+			}
+		}
 		
 		break;
 	case 2:
-		SectionName = AttackRFast;
+		if (!bDamagedRightHand)
+		{
+			SectionName = AttackRFast;
+		}
+		else
+		{
+			if (!bDamagedLeftHand)
+			{
+				SectionName = AttackLFast;
+			}
+		}
 		
-		break;
+	/*	break;
 	case 3:
 		SectionName = AttackLSword;
 		
@@ -358,7 +426,7 @@ FName AEnemy::GetAttackSectionName()
 	case 4:
 		SectionName = AttackRSword;
 		
-		break;
+		break;*/
 	}
 
 	return SectionName;
@@ -868,27 +936,70 @@ void AEnemy::SwitchBloodParticles(bool bIsHeadshot)
 void AEnemy::BreakingBones(FVector Impulse, FVector HitLocation, FName Bone)
 {
 	FName BoneToBreak;
-
-	if (Bone.ToString() == "lowerarm_l")
+	// TODO: Bone names as Variable, No more hard coding
+	if ((Bone.ToString() == "lowerarm_l") ||
+		(Bone.ToString() == "upperarm_l") ||
+		(Bone.ToString() == "hand_l")
+		)
 	{
 		BoneToBreak = TEXT("lowerarm_l");
+		bDamagedLeftHand = true;
 	}
-	if (Bone.ToString() == "lowerarm_r")
+	if ((Bone.ToString() == "lowerarm_r") ||
+		(Bone.ToString() == "upperarm_r") ||
+		(Bone.ToString() == "hand_r"))
 	{
 		BoneToBreak = TEXT("lowerarm_r");
+		bDamagedRightHand = true;
 	}
-	/*if (Bone.ToString() == "head")
+	if ((Bone.ToString() == "calf_l") ||
+		(Bone.ToString() == "thigh_l") ||
+		(Bone.ToString() == "foot_l") ||
+		(Bone.ToString() == "ball_l"))
+	{
+		BoneToBreak = TEXT("calf_l");
+		bDamagedLeftLeg = true;
+		SetMovementSpeed();
+	}
+	if ((Bone.ToString() == "calf_r") ||
+		(Bone.ToString() == "thigh_r") ||
+		(Bone.ToString() == "foot_r") ||
+		(Bone.ToString() == "ball_r"))
+	{
+		BoneToBreak = TEXT("calf_r");
+		bDamagedRightLeg = true;
+		SetMovementSpeed();
+	}
+	if (Bone.ToString() == "head")
 	{
 		BoneToBreak = TEXT("head");
-	}*/
+	}
 
 	Impulse = GetActorLocation() - Impulse;
 	Impulse.Normalize();
 
 	Impulse *= 9'000;
 
-	//GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
-	//AddHitReactImpulse(Impulse, HitLocation, Bone, false);
+	if (bCanBreakBones &&
+		BoneToBreak != TEXT("head"))
+	{
+		GetMesh()->BreakConstraint(Impulse, HitLocation, BoneToBreak);
+	}
+
+	AddHitReactImpulse(Impulse, HitLocation, Bone, false);
+
+	if (BoneToBreak == TEXT("head") &&
+		bRagdollOnHeadshot)
+	{
+		StartSlowMotion();
+		RagdollStart();
+	}
+
+	if (bDamagedLeftLeg &&
+		bDamagedRightLeg)
+	{
+		SetHandicapped();
+	}
 }
 
 void AEnemy::AddHitReactImpulse_Implementation(FVector Impulse, FVector HitLocation, FName Bone, bool bAddImpulse)
@@ -899,7 +1010,9 @@ void AEnemy::AddHitReactImpulse_Implementation(FVector Impulse, FVector HitLocat
 void AEnemy::SetStunned(bool Stunned)
 {
 	bStunned = Stunned;
-
+	// TODO: Play roar montage
+	// TODO: Play Sound
+	// TODO: Particle
 	if (EnemyController)
 	{
 		EnemyController->GetBlackboardComponent()->SetValueAsBool(
@@ -922,6 +1035,13 @@ void AEnemy::SetStunned(bool Stunned)
 void AEnemy::ResetStunn()
 {
 	SetStunned(false);
+}
+
+void AEnemy::SetHandicapped()
+{
+	// TODO: Play Transition to Crawling
+	bHandicapped = true;
+	SetMovementSpeed();
 }
 
 void AEnemy::ShowHitNumber(AVRShooterCharacter* Causer, int32 Damage, FVector HitLocation, bool bHeadShot)
@@ -1041,15 +1161,11 @@ void AEnemy::RotateWidgetToPlayer(UWidgetComponent* Widget, FVector PlayerLocati
 
 float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	//UE_LOG(LogTemp, Error, TEXT("Dying: %d"), bDying);
-	//UE_LOG(LogTemp, Error, TEXT("PlayerCanHurt: %d"), bPlayerCanHurt);
 	if (!bDying && 		
 		bPlayerCanHurt)
 	{
-		//UE_LOG(LogTemp, Error, TEXT("if statement %f"), DamageAmount);
 		float DamageToHealth = DamageAmount;
 
-		// Stop rotation to player
 		ToggleRotateToPlayer(false);
 
 		// Set the target blackboard key to agro the character
@@ -1083,7 +1199,6 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 				Health = 0.f;
 				UpdatePlayerKillCounter(EventInstigator->GetPawn());
 				Die();
-
 			}
 		}
 	}
@@ -1293,7 +1408,8 @@ void AEnemy::RagdollEnd()
 		if (bRagdollFaceUp)
 		{
 			if (AnimInstance &&
-				GetUpAnimationFaceUp)
+				GetUpAnimationFaceUp &&
+				!bHandicapped)
 			{
 				AnimInstance->Montage_Play(GetUpAnimationFaceUp, 1.f);
 			}
@@ -1305,7 +1421,8 @@ void AEnemy::RagdollEnd()
 		else
 		{
 			if (AnimInstance &&
-				GetUpAnimationFaceDown)
+				GetUpAnimationFaceDown &&
+				!bHandicapped)
 			{
 				AnimInstance->Montage_Play(GetUpAnimationFaceDown, 1.f);
 			}
@@ -1365,7 +1482,11 @@ void AEnemy::StartSlowMotion()
 void AEnemy::StopSlowMotion()
 {
 	UGameplayStatics::SetGlobalTimeDilation(this, 1.f);
-	FinishDeath();
+	
+	if (bDying)
+	{
+		FinishDeath();
+	}
 }
 
 void AEnemy::UpdatePlayerKillCounter(APawn* Shooter)

@@ -187,6 +187,9 @@ private:
 	class UMaterialInstanceDynamic* BlinkerMaterialInstance;
 
 	UPROPERTY()
+	UMaterialInstanceDynamic* TakeDamageMaterialInstance;
+
+	UPROPERTY()
 	TArray<class USplineMeshComponent*> TeleportPathMeshPool;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -241,7 +244,13 @@ private:
 	FPostProcessSettings TakeDamagePostProcess;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
-	float TakeDamagePostProcessTime = 0.05f;
+	FPostProcessSettings FireWeaponPostProcess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	float TakeDamagePostProcessTime = 0.15f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Initialization, meta = (AllowPrivateAccess = "true"))
+	float FireWeaponPostProcessTime = 0.15f;
 
 	// Time to wait before we can play another PickupSound
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "true"))
@@ -276,6 +285,9 @@ private:
 	// Blinker
 	UPROPERTY(EditAnywhere, Category = Initialization)
 	class UMaterialInterface* BlinkerMaterialBase;
+
+	UPROPERTY(EditAnywhere, Category = Initialization)
+	UMaterialInterface* TakeDamageMaterialBase;
 
 	UPROPERTY(EditAnywhere, Category = Initialization)
 	class UCurveFloat* RadiusVsVelocity;
@@ -339,6 +351,8 @@ public:
 	FORCEINLINE void SetIsFightingForLife(bool bFightingForLife) { bIsFightingForLife = bFightingForLife; }
 	FORCEINLINE USoundClass* GetMasterSoundClass() const { return MasterSoundClass; }
 	FORCEINLINE FPostProcessSettings GetFightForYourLifePostProcess() const { return FightForYourLifePostProcess; }
+	FORCEINLINE FPostProcessSettings GetFireWeaponPostProcess() const { return FireWeaponPostProcess; }
+	FORCEINLINE float GetFireWeaponPostProcessTime() const { return FireWeaponPostProcessTime; }
 
 	void StartPickupSoundTimer();
 	void StartEquipSoundTimer();
@@ -374,11 +388,14 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetSoundPitch(float NewPitch, float FadeInTime);
 
-	void StartPostProcess(FPostProcessSettings PostProcessSettings, float PostProcessEffectTime);
+	void StartPostProcess(FPostProcessSettings PostProcessSettings, float PostProcessEffectTime, bool bMaterialChange = true);
 	void ResetPostProcess();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void SetResetCameraPostProcessDetails(FPostProcessSettings PostProcessSettings, bool bSet);
 
 	FTransform GetTeleportSocketTransform();
+
+	void SetTakeDamagePostProcess();
+	void ResetTakeDamagePostProcess();
 };

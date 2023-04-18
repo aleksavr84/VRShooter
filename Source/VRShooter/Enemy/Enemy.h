@@ -49,6 +49,8 @@ private:
 protected:
 	virtual void BeginPlay() override;
 
+	void SetHandicapped();
+
 	void Die();
 	void ResetHitReactTimer();
 	void ResetCanAttack();
@@ -64,11 +66,11 @@ protected:
 
 	void RotateToPlayer(float DeltaTime);
 
-	UFUNCTION(BlueprintCallable)
-	void PlayAttackMontage(FName Section, float PlayRate = 1.0f);
-
 	UFUNCTION(BlueprintPure)
 	FName GetAttackSectionName();
+
+	UFUNCTION(BlueprintCallable)
+	void PlayAttackMontage(FName Section, float PlayRate = 1.0f);
 
 	void DoDamage(class AVRShooterCharacter* Victim, bool bRadialDamage = false);
 	void SpawnBloodParticles(AVRShooterCharacter* Victim, FName SocketName);
@@ -243,10 +245,16 @@ private:
 	// Montage section names
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FName AttackLFast = TEXT("AttackLFast");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName AttackLHandicapped = TEXT("AttackLHandicapped");
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FName AttackRFast = TEXT("AttackRFast");
-	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FName AttackRHandicapped = TEXT("AttackRHandicapped");
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FName AttackRSword = TEXT("AttackRSword");
 	
@@ -261,6 +269,9 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UBoxComponent* RightWeaponCollision;
 
+	// HIT REACTION & DAMAGED BODY PARTS & STUNN
+
+	// HIT REACTION
 	FTimerHandle HitReactTimer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -270,6 +281,50 @@ private:
 	float HitReactTimeMax = .75f;
 	
 	bool bCanHitReact = true;
+
+	// DAMAGED BODY PART
+	bool bDamagedLeftHand = false;
+	bool bDamagedRightHand = false;
+	bool bDamagedLeftLeg = false;
+	bool bDamagedRightLeg = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bCanBreakBones = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bRagdollOnHeadshot = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bHandicapped = false;
+
+	// TODO: Switching on State
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MovementSpeedNormal = 600.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MovementSpeedInjured = 300.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float MovementSpeedCrawl = 150.f;
+
+	void SetMovementSpeed();
+
+	// STUNN
+	// True when playing the get hit animation
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
+	bool bStunned = false;
+
+	FTimerHandle StunnResetTimer;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
+	float StunnResetTime = 1.f;
+
+	UFUNCTION()
+	void ResetStunn();
+
+	// Chance of being stunned. 0: no stun chance, 1: 100% stun chance 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
+	float StunChance = .5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Initialization, meta = (AllowPrivateAccess = "True"))
 	TSubclassOf<class AWidgetActor> WidgetActorClass;
@@ -299,22 +354,6 @@ private:
 	FVector PatrolPoint2;
 
 	class AEnemyController* EnemyController;
-
-	// True when playing the get hit animation
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
-	bool bStunned = false;
-
-	FTimerHandle StunnResetTimer;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
-	float StunnResetTime = 1.f;
-
-	UFUNCTION()
-	void ResetStunn();
-
-	// Chance of being stunned. 0: no stun chance, 1: 100% stun chance 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
-	float StunChance = .5f;
 
 	// True when in attack range -> Time to Attack!!!
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "True"))
@@ -378,7 +417,7 @@ private:
 	FTimerHandle DeathTimer;
 	// Time after death until Destroy
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	float DeathTime = 2.0f;
+	float DeathTime = .75f;
 
 	void UpdatePlayerKillCounter(APawn* Shooter);
 	bool bKillCounterUpdated = false;
@@ -536,7 +575,7 @@ private:
 	bool bRagdollDisabled = false;
 
 	UPROPERTY(EditAnywhere, Category = Initialization, meta = (AllowPrivateAccess = "True", MakeEditWidget = "true"))
-		bool bIsBossEnemy = false;
+	bool bIsBossEnemy = false;
 
 	FVector GetRandomSpawningPoint();
 	void SpawnEnemies();
@@ -560,6 +599,21 @@ public:
 	
 	UFUNCTION(BlueprintCallable)
 	FORCEINLINE bool GetIsRagdoll() const { return bIsRagdoll; }
+
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE bool GetDamagedLeftHand() const { return bDamagedLeftHand; }
+	
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE bool GetDamagedRightHand() const { return bDamagedRightHand; }
+
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE bool GetDamagedLeftLeg() const { return bDamagedLeftLeg; }
+
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE bool GetDamagedRightLeg() const { return bDamagedRightLeg; }
+
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE bool GetHandicapped() const { return bHandicapped; }
 
 	FORCEINLINE void SetRagdollTime(float Time) { RagdollTime = Time; }
 	void RagdollStart();
