@@ -1192,12 +1192,33 @@ float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AC
 				}
 			}
 
+			if (HitSound)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("HitSound"));
+				UGameplayStatics::PlaySoundAtLocation(
+					this,
+					HitSound,
+					GetActorLocation()
+				);
+			}
+
 			Health = FMath::Clamp(Health - DamageToHealth, 0.f, MaxHealth);
 
 			if (Health <= 0.f)
 			{
 				Health = 0.f;
 				UpdatePlayerKillCounter(EventInstigator->GetPawn());
+				
+				// Play death sound
+				if (DeathSound)
+				{
+					UGameplayStatics::PlaySoundAtLocation(
+						this,
+						DeathSound,
+						GetActorLocation()
+					);
+				}
+
 				Die();
 			}
 		}
@@ -1257,6 +1278,8 @@ void AEnemy::RemoveEnemyFromSpawnedEnemies(AEnemy* EnemyToRemove)
 void AEnemy::RagdollStart()
 {
 	if (bRagdollDisabled) return;
+	if (bIsRagdoll) return;
+	if (bHandicapped) return;
 
 	bIsRagdoll = true;
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -1557,11 +1580,11 @@ void AEnemy::DestroyEnemy()
 		);
 	}
 
-	if (DeathSound)
+	if (DestroySound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
 			this,
-			DeathSound,
+			DestroySound,
 			GetActorLocation()
 		);
 	}

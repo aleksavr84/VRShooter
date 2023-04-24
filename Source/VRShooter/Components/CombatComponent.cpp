@@ -23,6 +23,7 @@
 #include "Camera/CameraShakeBase.h"
 #include "VRShooter/Weapon/MagicProjectile.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "VRShooter/Weapon/Shotgun.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -139,6 +140,10 @@ void UCombatComponent::EquipWeapon(class AWeapon* WeaponToEquip, bool bSwapping)
 				SpawnParam.Instigator = Character;
 				CrosshairsWidgetActor = Character->GetWorld()->SpawnActor<AWidgetActor>(CrosshairsWidgetActorClass, SpawnParam);
 				CrosshairsWidgetActor->AttachToComponent(EquippedWeapon->GetItemSkeletalMesh(), FAttachmentTransformRules::KeepRelativeTransform);
+				CrosshairsWidgetActor->SetActorRelativeRotation(FRotator(
+					0.f,
+					90.f,
+					0.f));
 			}
 		}
 	}
@@ -317,13 +322,15 @@ void UCombatComponent::LineTraceFromWeapon(float DeltaTime)
 				if (FireHit.bBlockingHit)
 				{
 					BeamEndPoint = FireHit.Location;
+					HitTarget = BeamEndPoint;
 
 					if ((BeamEndPoint - Character->GetActorLocation()).Size() <
 						(CrosshairsLocation - Character->GetActorLocation()).Size())
 					{
 						CrosshairsLocation = BeamEndPoint;
+						HitTarget = CrosshairsLocation;
 					}
-
+					
 					// Does hit Actor implement BulletHitInterface?
 				//	if (FireHit.GetActor())
 				//	{
@@ -447,7 +454,21 @@ void UCombatComponent::FireWeapon()
 			{
 				Character->StartPostProcess(Character->GetFireWeaponPostProcess(), Character->GetFireWeaponPostProcessTime(), false);
 			}
-			SendBullet();
+			
+			switch (EquippedWeapon->GetFireType())
+			{
+			case EFireType::EFT_HitScan:
+				FireHitScanWeapon();
+				break;
+			case EFireType::EFT_Projectile:
+				// TODO: Change to Projectile Weapon
+				FireHitScanWeapon();
+				break;
+			case EFireType::EFT_Shotgun:
+				FireShotgun();
+				break;
+			}
+			
 			PlayGunFireMontage();
 			PlayHapticEffect();
 			EquippedWeapon->DecrementAmmo();
@@ -467,7 +488,8 @@ void UCombatComponent::PlayFireSound()
 	}
 }
 
-void UCombatComponent::SendBullet()
+// TODO: Make a new function -> this code is duplicate! (See in ShotgunFire)
+void UCombatComponent::FireHitScanWeapon()
 {
 	if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_GrenadeLauncher) return;
 
@@ -567,7 +589,7 @@ void UCombatComponent::SendBullet()
 			}
 		}
 	}
-
+	// TODO: Call From Weapon Class
 	if (EquippedWeapon->GetBeamParticles())
 	{
 		UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
@@ -729,6 +751,182 @@ void UCombatComponent::SendBullet()
 	//		}
 	//	}
 	//}
+}
+
+void UCombatComponent::FireShotgun()
+{
+	AShotgun* Shotgun = Cast<AShotgun>(EquippedWeapon);
+
+	if (Shotgun)
+	{
+		TArray<FVector> HitTargets;
+		Shotgun->ShotgunTraceEndWithScatter(HitTarget, HitTargets);
+
+		TMap<AEnemy*, uint32> HitMap;
+
+		for (FVector ShotgunHitTarget : HitTargets)
+		{
+			// BoneBreakImpule = StartLocation
+			EquippedWeapon->WeaponTraceHit(BoneBreakImpulse, ShotgunHitTarget, FireHit);
+
+			AEnemy* EnemyCharacter = Cast<AEnemy>(FireHit.GetActor());
+
+			if (EnemyCharacter)
+			{
+				StartHitMultiplierTimer();
+
+				if (HitMap.Contains(EnemyCharacter))
+				{
+					HitMap[EnemyCharacter]++;
+				}
+				else
+				{
+					HitMap.Emplace(EnemyCharacter, 1);
+				}
+
+				/*if (ImpactParticles)
+				{
+					UGameplayStatics::SpawnEmitterAtLocation(
+						GetWorld(),
+						ImpactParticles,
+						FireHit.ImpactPoint,
+						FireHit.ImpactNormal.Rotation()
+					);
+				}
+
+				if (HitSound)
+				{
+					UGameplayStatics::PlaySoundAtLocation(
+						this,
+						HitSound,
+						FireHit.ImpactPoint,
+						.5f,
+						FMath::FRandRange(-.5f, .5f)
+					);
+				}*/
+
+				if (EquippedWeapon->GetMuzzleFlash())
+				{
+					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
+				}
+
+				if (EquippedWeapon->GetMuzzleFlashNiagara())
+				{
+					UNiagaraComponent* MuzzleFlashN = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+						this,
+						EquippedWeapon->GetMuzzleFlashNiagara(),
+						SocketTransform.GetLocation(),
+						EquippedWeapon->GetActorRotation()
+					);
+					MuzzleFlashN->SetWorldRotation(SocketTransform.Rotator());
+				}	
+
+				if (FireHit.bBlockingHit)
+				{
+					IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(EnemyCharacter);
+
+					if (BulletHitInterface)
+					{
+						BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
+					}
+				}
+
+				EnemyCharacter->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+			}
+		}
+		for (auto HitPair : HitMap)
+		{
+			if (HitPair.Key)
+			{
+				//UGameplayStatics::ApplyDamage(
+				//	HitPair.Key, // Character that was hit
+				//	EquippedWeapon->GetDamage() * HitPair.Value, // Multiply Damage by number of times hit
+				//	Character->GetController(),
+				//	Character,
+				//	UDamageType::StaticClass()
+				//);
+				/*if (FireHit.bBlockingHit)
+				{
+					IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(HitPair.Key);
+
+					if (BulletHitInterface)
+					{
+						BulletHitInterface->BulletHit_Implementation(FireHit, Character, Character->GetController());
+					}*/
+
+					// Does hit Actor implement BulletHitInterface?
+					if (HitPair.Key)
+					{
+						AEnemy* HitEnemy = Cast<AEnemy>(HitPair.Key);
+
+						if (HitEnemy)
+						{
+							int32 Damage{};
+
+							if (FireHit.BoneName.ToString() == HitEnemy->GetHeadBone())
+							{
+								// Head shot
+								Damage = EquippedWeapon->GetHeadShotDamage();
+								//HitEnemy->SwitchBloodParticles(true);
+
+								UGameplayStatics::ApplyDamage(
+									HitPair.Key,
+									Damage * HitPair.Value,
+									Character->GetController(),
+									Character,
+									UDamageType::StaticClass()
+								);
+
+								HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, true);
+								//HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+								// Update HitCounter and ScoreMultiplier
+								UpdateHitMultiplier(GetHitMultiplier() + 1);
+								UpdateHitCounter(Damage);
+							}
+							else
+							{
+								// Body shot
+								Damage = EquippedWeapon->GetDamage();
+
+								UGameplayStatics::ApplyDamage(
+									HitPair.Key,
+									Damage* HitPair.Value,
+									Character->GetController(),
+									Character,
+									UDamageType::StaticClass()
+								);
+
+								HitEnemy->ShowHitNumber(Character, Damage, FireHit.Location, false);
+								//HitEnemy->BreakingBones(BoneBreakImpulse, FireHit.Location, FireHit.BoneName);
+
+								// Update HitCounter and ScoreMultiplier
+								UpdateHitCounter(Damage);
+							}
+
+							// Reset the timers if we make a hit
+							StartHitMultiplierTimer();
+							StartKillCounterTimer();
+						}
+					}
+					else
+					{
+						// Spawn default particles
+						if (EquippedWeapon->GetImpactParticles())
+						{
+							UGameplayStatics::SpawnEmitterAtLocation(
+								GetWorld(),
+								EquippedWeapon->GetImpactParticles(),
+								FireHit.Location
+							);
+						}
+					}
+				//}
+			}
+		}
+		//}
+	}
 }
 
 // Called from the Enemy Class

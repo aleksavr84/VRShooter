@@ -44,7 +44,8 @@ protected:
 
 	void FireWeapon();
 	void PlayFireSound();
-	void SendBullet();
+	void FireHitScanWeapon();
+	void FireShotgun();
 	void PlayGunFireMontage();
 	void PlayHapticEffect();
 	void ReloadWeapon();
@@ -102,6 +103,8 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AWeapon> DefaultWeaponClass;
+
+	FVector HitTarget;
 
 	// Combat
 

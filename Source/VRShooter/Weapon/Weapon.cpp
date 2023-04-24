@@ -5,6 +5,7 @@
 #include "Casing.h"
 #include "Camera/CameraShakeBase.h"
 #include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 AWeapon::AWeapon()
 {
@@ -51,6 +52,8 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 			AmmoType = WeaponDataRow->AmmoType;
 			Ammo = WeaponDataRow->WeaponAmmo;
 			MagazineCapacity = WeaponDataRow->MagazineCapacity;
+			DistanceToSphere = WeaponDataRow->DistanceToSphere;
+			SphereRadius = WeaponDataRow->SphereRadius;
 			
 			//// Inventory
 			SetIconItem(WeaponDataRow->InventoryIcon);
@@ -66,6 +69,7 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 			//// Animations and Montages
 			GetItemSkeletalMesh()->SetAnimInstanceClass(WeaponDataRow->AnimBP);
 			FireAnimation = WeaponDataRow->FireAnimation;
+			FireAnimation2 = WeaponDataRow->FireAnimation2;
 			ReloadAnimation = WeaponDataRow->ReloadAnimation;
 			ReloadMontage = WeaponDataRow->ReloadMontage;
 			WeaponReloadAnimLength = WeaponDataRow->WeaponReloadAnimLength;
@@ -123,6 +127,55 @@ void AWeapon::OnConstruction(const FTransform& Transform)
 	}
 }
 
+void AWeapon::WeaponTraceHit(const FVector& TraceStart, const FVector& HitTarget, FHitResult& OutHit)
+{
+	UWorld* World = GetWorld();
+
+	if (World)
+	{
+		FVector End = TraceStart + (HitTarget - TraceStart) * 1.25f;
+		//FVector End = TraceStart + (HitTarget - TraceStart) * 50'000.f;
+
+		World->LineTraceSingleByChannel(
+			OutHit,
+			TraceStart,
+			End,
+			ECollisionChannel::ECC_Visibility
+		);
+
+		FVector BeamEnd = End;
+
+		if (OutHit.bBlockingHit)
+		{
+			BeamEnd = OutHit.ImpactPoint;
+		}
+
+		/*DrawDebugSphere(
+			World,
+			BeamEnd,
+			16.f,
+			12,
+			FColor::Orange,
+			true
+		);*/
+
+		if (BeamParticles)
+		{
+			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+				World,
+				BeamParticles,
+				TraceStart,
+				FRotator::ZeroRotator,
+				true
+			);
+			if (Beam)
+			{
+				Beam->SetVectorParameter(FName("Target"), BeamEnd);
+			}
+		}
+	}
+}
+
 void AWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -138,10 +191,28 @@ void AWeapon::Tick(float DeltaTime)
 
 void AWeapon::Fire(const FVector& HitTarget)
 {
-	if (FireAnimation)
+	FireCounter++;
+
+	if (FireAnimation &&
+		FireCounter == 1)
 	{
 		GetItemSkeletalMesh()->PlayAnimation(FireAnimation, false);
 	}
+	if (FireAnimation2 &&
+		FireCounter == 2)
+	{
+		GetItemSkeletalMesh()->PlayAnimation(FireAnimation2, false);
+	} 
+	else
+	{
+		if (FireAnimation)
+		{
+			GetItemSkeletalMesh()->PlayAnimation(FireAnimation, false);
+		}
+	}
+
+	// Reset FireCounter
+	if (FireCounter == 2) FireCounter = 0;
 
 	if (FireCameraShake)
 	{
@@ -204,7 +275,6 @@ const USkeletalMeshSocket* AWeapon::GetMuzzleFlashSocket()
 
 	if (WeaponMesh)
 	{
-
 		return WeaponMesh->GetSocketByName(MuzzleFlashSocketName);
 	}
 

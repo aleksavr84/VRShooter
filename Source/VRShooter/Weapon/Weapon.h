@@ -33,6 +33,12 @@ struct FWeaponDataTable : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
 	int32 MagazineCapacity;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	float DistanceToSphere;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Initialization")
+	float SphereRadius;
+
 	// Inventory
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory")
 	UTexture2D* InventoryIcon;
@@ -56,6 +62,9 @@ struct FWeaponDataTable : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
 	class UAnimationAsset* FireAnimation;
+
+	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
+	UAnimationAsset* FireAnimation2;
 
 	UPROPERTY(EditAnywhere, Category = "Animations and Montages")
 	class UAnimationAsset* ReloadAnimation;
@@ -143,10 +152,20 @@ class VRSHOOTER_API AWeapon : public AItem
 public:
 	AWeapon();
 	virtual void Tick(float DeltaTime) override;
+	void WeaponTraceHit(const FVector& TraceStart, const FVector& HitTarget, FHitResult& OutHit);
 
 protected:
 	//void StopFalling();
 	virtual void OnConstruction(const FTransform& Transform) override;
+
+	/*
+	Trace end with scatter
+	*/
+	UPROPERTY(EditAnywhere, Category = "Initialization")
+	float DistanceToSphere = 800.f;
+
+	UPROPERTY(EditAnywhere, Category = "Initialization")
+	float SphereRadius = 75.f;
 
 private:
 	// DataTable for weapon properties
@@ -177,6 +196,11 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animations and Montages", meta = (AllowPrivateAccess = "true"))
 	class UAnimationAsset* FireAnimation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animations and Montages", meta = (AllowPrivateAccess = "true"))
+	UAnimationAsset* FireAnimation2;
+
+	int32 FireCounter = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animations and Montages", meta = (AllowPrivateAccess = "true"))
 	class UAnimationAsset* ReloadAnimation;
